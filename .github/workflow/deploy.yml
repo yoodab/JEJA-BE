@@ -1,0 +1,24 @@
+name: Home Server Auto Deploy
+
+on:
+  push:
+    branches: [ "main" ]  # main 브랜치에 푸시될 때 실행
+
+jobs:
+  deploy:
+    # ★ 핵심: 깃허브 서버가 아니라, 님 노트북(self-hosted)에서 실행해라!
+    runs-on: self-hosted
+
+    steps:
+      - name: Execute Deploy Script
+        run: |
+          # 1. 홈 디렉토리로 이동
+          cd /home/dabin
+          
+          # 2. 깃허브에서 최신 코드 당겨오기 (혹시 몰라 한 번 더)
+          cd backend
+          git pull origin main
+          
+          # 3. 배포 스크립트 실행
+          cd /home/dabin
+          ./deploy.sh
