@@ -1,0 +1,22 @@
+package com.jeja.jejabe.newcomer.dto;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+public class NewcomerUpdateRequestDto {
+    private String phone;
+    private String address;
+    private Long managerMemberId;
+    private String assignmentNote;
+
+    // [추가] 상태 텍스트 3종
+    private String firstStatus;
+    private String middleStatus;
+    private String recentStatus;
+
+    // [추가] 이미지 변경
+    private String profileImageUrl;
+
+}
