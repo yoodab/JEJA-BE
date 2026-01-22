@@ -25,6 +25,20 @@ repositories {
 }
 
 dependencies {
+    // JWT (JSON Web Token) 라이브러리
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    // Apache POI for Excel file handling
+    implementation 'org.apache.poi:poi:5.2.5' // .xls 파일 (HSSF)
+    implementation 'org.apache.poi:poi-ooxml:5.2.5' // .xlsx 파일 (XSSF)
+
+    // SpringDoc OpenAPI (Swagger UI)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0' // 최신 버전은 검색해서 사용하셔도 좋습니다.
+
+    // 엑셀
+    implementation 'org.apache.poi:poi-ooxml:5.2.3'
 
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
