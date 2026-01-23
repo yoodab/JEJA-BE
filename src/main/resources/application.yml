@@ -27,7 +27,7 @@ server:
 
 
 file:
-  upload-dir: C:/dev/church-files/
+  upload-dir: /app/uploads/
 
   resource-handler: /files/**
 
