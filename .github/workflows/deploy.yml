@@ -6,19 +6,30 @@ on:
 
 jobs:
   deploy:
-    # ★ 핵심: 깃허브 서버가 아니라, 님 노트북(self-hosted)에서 실행해라!
     runs-on: self-hosted
 
     steps:
       - name: Execute Deploy Script
         run: |
-          # 1. 홈 디렉토리로 이동
-          cd /home/dabin
+          echo ">>> 1. 백엔드 폴더로 이동"
+          cd /home/dabin/backend
           
-          # 2. 깃허브에서 최신 코드 당겨오기 (혹시 몰라 한 번 더)
-          cd backend
+          echo ">>> 2. 깃허브 최신 코드 강제 동기화 (충돌 해결)"
+          # 원격 저장소 정보 갱신
+          git fetch --all
+          
+          # 로컬 변경사항(설정파일 수정 등) 다 무시하고 깃허브 코드로 덮어쓰기
+          git reset --hard origin/main
+          
+          # 확실하게 당겨오기
           git pull origin main
           
-          # 3. 배포 스크립트 실행
+          # gradlew 실행 권한 주기 (가끔 풀릴 때가 있어서 추가함)
+          chmod +x gradlew
+          
+          echo ">>> 3. 배포 스크립트 실행"
           cd /home/dabin
+          
+          # 배포 스크립트에도 실행 권한 주기
+          chmod +x deploy.sh
           ./deploy.sh
