@@ -3,6 +3,7 @@ package com.jeja.jejabe.member;
 
 import com.jeja.jejabe.global.exception.CommonErrorCode;
 import com.jeja.jejabe.global.exception.GeneralException;
+import com.jeja.jejabe.member.domain.Gender;
 import com.jeja.jejabe.member.domain.Member;
 import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.member.domain.MemberStatus;
@@ -69,6 +70,7 @@ public class ExcelMemberService {
                             .birthDate(dto.getBirthDate())
                             .phone(dto.getPhone())
                             .memberStatus(MemberStatus.ACTIVE)// 엑셀에 없는 경우 기본값
+                            .gender(convertGender(dto.getGender()))
                             .role(MemberRole.MEMBER)
                             .build();
                     membersToSave.add(member);
@@ -123,7 +125,30 @@ public class ExcelMemberService {
             dto.setPhone(null);
         }
 
+        Cell genderCell = (Cell) row.getCell(3);
+        if (genderCell != null) {
+            dto.setGender(getCellValueAsString(genderCell));
+        } else {
+            dto.setGender(null);
+        }
+
         return dto;
+    }
+
+    private Gender convertGender(String genderStr) {
+        if (genderStr == null || genderStr.trim().isEmpty()) {
+            return null; // 혹은 Gender.NONE (정책에 따라 결정)
+        }
+
+        String trimmedGender = genderStr.trim();
+
+        if (trimmedGender.equals("남성") || trimmedGender.equals("남")) {
+            return Gender.MALE;
+        } else if (trimmedGender.equals("여성") || trimmedGender.equals("여")) {
+            return Gender.FEMALE;
+        }
+
+        return null; // 알 수 없는 값일 경우 null 처리
     }
 
     private String getCellValueAsString(Cell cell) {
@@ -134,63 +159,76 @@ public class ExcelMemberService {
             case STRING:
                 return cell.getStringCellValue().trim();
             case NUMERIC:
-                // 날짜 형식일 수도 있으므로 분기 처리 (날짜는 생년월일 필드에서 따로 처리)
+                // [핵심 수정] 엑셀이 날짜 포맷인 경우, 바로 LocalDate로 변환하여 "1995-03-15" 형태로 반환
                 if (DateUtil.isCellDateFormatted(cell)) {
-                    return new DataFormatter().formatCellValue(cell).trim(); // 날짜를 문자열로 포맷
+                    try {
+                        return cell.getLocalDateTimeCellValue().toLocalDate().toString();
+                    } catch (Exception e) {
+                        // 날짜 변환 실패 시 기존 방식대로 문자열 처리 시도
+                        return new DataFormatter().formatCellValue(cell).trim();
+                    }
                 }
-                return String.valueOf((long) cell.getNumericCellValue()).trim(); // 숫자를 문자열로 변환
+                return String.valueOf((long) cell.getNumericCellValue()).trim();
             case BOOLEAN:
                 return String.valueOf(cell.getBooleanCellValue()).trim();
             case FORMULA:
-                return cell.getCellFormula().trim();
+                try {
+                    return cell.getStringCellValue();
+                } catch (IllegalStateException e) {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
             default:
                 return "";
         }
     }
 
     // 생년월일 문자열을 YYYY-MM-DD 형식으로 정규화하는 헬퍼 메서드
-    private String normalizeBirthDate(String rawBirthDate) {
+    private LocalDate normalizeBirthDate(String rawBirthDate) {
         if (rawBirthDate == null || rawBirthDate.trim().isEmpty()) {
             return null;
         }
-        // 공백 제거 및 불필요한 문자(하이픈, 점 제외) 제거
-        String cleanedDate = rawBirthDate.trim().replaceAll("[^0-9.-]", "");
 
-        // 1. "YY.MM.DD" 또는 "YY-MM-DD" 형식 처리
-        if (cleanedDate.matches("^\\d{2}[.-]\\d{2}[.-]\\d{2}$")) {
+        // [수정 1] 슬래시(/)도 지우지 않고 살려둠
+        String cleanedDate = rawBirthDate.trim().replaceAll("[^0-9.\\-/]", "");
+
+        // [수정 2] 점(.)이나 슬래시(/)를 모두 하이픈(-)으로 통일
+        String formattedDate = cleanedDate.replace('.', '-').replace('/', '-');
+
+        // [수정 3] "YYYY-M-D" (한 자리수 월/일)도 허용하는 유연한 정규식
+        if (formattedDate.matches("^\\d{4}-\\d{1,2}-\\d{1,2}$")) {
             try {
-                int year = Integer.parseInt(cleanedDate.substring(0, 2));
-                int month = Integer.parseInt(cleanedDate.substring(3, 5));
-                int day = Integer.parseInt(cleanedDate.substring(6, 8));
+                String[] parts = formattedDate.split("-");
+                int year = Integer.parseInt(parts[0]);
+                int month = Integer.parseInt(parts[1]);
+                int day = Integer.parseInt(parts[2]);
 
-                // 두 자리 연도를 네 자리로 변환
-                int fullYear = (year > LocalDate.now().getYear() % 100) ? 1900 + year : 2000 + year;
-                return LocalDate.of(fullYear, month, day).toString(); // "YYYY-MM-DD"
+                // LocalDate를 쓰면 1995-3-5 -> 1995-03-05로 자동 변환됨
+                return LocalDate.of(year, month, day);
             } catch (Exception e) {
-                log.warn("날짜 형식 변환 실패 (YY.MM.DD): '{}'", rawBirthDate);
-                return rawBirthDate; // 변환 실패 시 원본 반환
+                log.warn("날짜 변환 실패: {}", rawBirthDate);
+                return null;
             }
         }
 
-        // 2. "YYYY.MM.DD" 또는 "YYYY-MM-DD" 형식 처리
-        if (cleanedDate.matches("^\\d{4}[.-]\\d{2}[.-]\\d{2}$")) {
-            return cleanedDate.replace('.', '-');
+        // YY-MM-DD 형식 처리 (예: 95-03-15)
+        if (formattedDate.matches("^\\d{2}-\\d{1,2}-\\d{1,2}$")) {
+            try {
+                String[] parts = formattedDate.split("-");
+                int year = Integer.parseInt(parts[0]);
+                int month = Integer.parseInt(parts[1]);
+                int day = Integer.parseInt(parts[2]);
+
+                // 연도 보정 (2자리 -> 4자리)
+                int currentYearShort = LocalDate.now().getYear() % 100;
+                int fullYear = (year > currentYearShort) ? 1900 + year : 2000 + year;
+
+                return LocalDate.of(fullYear, month, day);
+            } catch (Exception e) {
+                return null;
+            }
         }
 
-        // 3. "YYYY.MM" 또는 "YYYY-MM" 형식 처리 (년/월만 있는 경우) - null 처리
-        if (cleanedDate.matches("^\\d{4}[.-]\\d{2}$")) {
-            log.warn("월까지만 입력된 날짜는 저장하지 않습니다: '{}'", rawBirthDate);
-            return null;
-        }
-
-        // 4. "YY" 또는 "YYYY" 형식 처리 (년도만 있는 경우) -> null 반환
-        if (cleanedDate.matches("^\\d{2}$") || cleanedDate.matches("^\\d{4}$")) {
-            log.warn("연도만 입력된 날짜는 저장하지 않습니다: '{}'", rawBirthDate);
-            return null;
-        }
-
-        // 그 외 처리할 수 없는 형식은 로그를 남기고 null 처리
-        log.warn("인식할 수 없는 날짜 형식입니다: '{}'", rawBirthDate);
+        log.warn("인식할 수 없는 날짜 형식: '{}'", rawBirthDate);
         return null;
     }
 }

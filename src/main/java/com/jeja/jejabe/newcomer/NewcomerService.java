@@ -69,7 +69,8 @@ public class NewcomerService {
                 requestDto.getMiddleStatus(),
                 requestDto.getRecentStatus(),
                 requestDto.getProfileImageUrl(),
-                newManager
+                newManager,
+                requestDto.getBirthDate()
         );
     }
 

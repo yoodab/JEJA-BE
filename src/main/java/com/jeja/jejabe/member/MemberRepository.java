@@ -10,12 +10,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface MemberRepository extends JpaRepository<Member, Long> {
-    Optional<Member> findByNameAndBirthDate(String name, String birthDate);
+    Optional<Member> findByNameAndBirthDate(String name, LocalDate birthDate);
 
     Optional<Member> findByNameAndPhone(String name, String phone);
     // 특정 상태의 모든 멤버를 조회

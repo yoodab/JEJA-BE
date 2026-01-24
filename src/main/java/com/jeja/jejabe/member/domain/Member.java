@@ -6,6 +6,7 @@ import com.jeja.jejabe.member.dto.MemberUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,14 +29,15 @@ public class Member {
     @Column(length = 20)
     private String phone;
 
-    @Column(length = 20)
-    private String birthDate;
+    private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MemberStatus memberStatus;
 
-    private String gender;
+    @Enumerated(EnumType.STRING) // DB에는 "MALE", "FEMALE" 문자열로 저장됨
+    @Column(length = 10)
+    private Gender gender;
 
     @Column(length = 500) // URL 길이를 고려해 넉넉하게 잡음
     private String memberImageUrl;
@@ -64,7 +66,7 @@ public class Member {
     // 생성자 (Builder 패턴)
     // ========================================================================
     @Builder
-    public Member(String name, String phone, String birthDate, MemberStatus memberStatus, @Singular("role") Set<MemberRole> roles, String gender,String memberImageUrl) {
+    public Member(String name, String phone, LocalDate birthDate, MemberStatus memberStatus, @Singular("role") Set<MemberRole> roles, Gender gender,String memberImageUrl) {
         this.name = name;
         this.phone = phone;
         this.birthDate = birthDate;
