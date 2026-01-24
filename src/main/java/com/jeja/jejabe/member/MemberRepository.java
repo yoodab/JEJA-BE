@@ -1,5 +1,6 @@
 package com.jeja.jejabe.member;
 
+import aj.org.objectweb.asm.commons.Remapper;
 import com.jeja.jejabe.club.ClubType;
 import com.jeja.jejabe.member.domain.Member;
 import com.jeja.jejabe.member.domain.MemberStatus;
@@ -35,18 +36,23 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("SELECT cm.member FROM ClubMember cm WHERE cm.club.type = :clubType")
     List<Member> findByClubType(@Param("clubType") ClubType clubType);
 
-    @Query("SELECT m FROM Member m WHERE " +
-            "(:keyword IS NULL OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) " +
-            "AND m.memberStatus NOT IN :excluded")
-    Page<Member> findAllByKeyword(
-            @Param("keyword") String keyword,
-            @Param("excluded") List<MemberStatus> excluded,
-            Pageable pageable
-    );
+
 
     @Query("SELECT m.memberStatus, COUNT(m) " +
             "FROM Member m " +
             "WHERE m.memberStatus NOT IN :excludedStatuses  " +
             "GROUP BY m.memberStatus")
     List<Object[]> countMembersGroupedByMemberStatus(List<MemberStatus> excludedStatuses);
+
+
+    @Query("SELECT m FROM Member m WHERE " +
+            "(:keyword IS NULL OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) " +
+            "AND (:status IS NULL OR m.memberStatus = :status) " +  // 여기 추가됨
+            "AND m.memberStatus NOT IN :excluded")
+    Page<Member> findAllByKeywordAndStatus(
+            @Param("keyword") String keyword,
+            @Param("status") MemberStatus status,   // 파라미터 추가
+            @Param("excluded") List<MemberStatus> excluded,
+            Pageable pageable
+    );
 }

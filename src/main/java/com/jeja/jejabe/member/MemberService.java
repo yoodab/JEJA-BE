@@ -14,7 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,13 +28,13 @@ public class MemberService {
 
 
     @Transactional(readOnly = true)
-    public Page<MemberDto> getMembers(String keyword, Pageable pageable) {
+    public Page<MemberDto> getMembers(String keyword, MemberStatus status, Pageable pageable) {
 
         // 제외할 상태 목록 정의 (INACTIVE, SYSTEM)
         List<MemberStatus> excludedStatuses = List.of(MemberStatus.INACTIVE, MemberStatus.SYSTEM);
 
         // Repository 호출 시 리스트 전달
-        return memberRepository.findAllByKeyword(keyword, excludedStatuses, pageable)
+        return memberRepository.findAllByKeywordAndStatus(keyword, status, excludedStatuses, pageable)
                 .map(MemberDto::new);
     }
 

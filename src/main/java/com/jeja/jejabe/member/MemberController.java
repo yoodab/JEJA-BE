@@ -36,8 +36,9 @@ public class MemberController {
     @GetMapping
     public ResponseEntity<ApiResponseForm<Page<MemberDto>>> getMembers(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) MemberStatus status,
             @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        return ResponseEntity.ok(ApiResponseForm.success(memberService.getMembers(keyword, pageable)));
+        return ResponseEntity.ok(ApiResponseForm.success(memberService.getMembers(keyword, status, pageable)));
     }
 
 
