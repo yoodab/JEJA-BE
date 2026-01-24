@@ -40,7 +40,13 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             "AND m.memberStatus NOT IN :excluded")
     Page<Member> findAllByKeyword(
             @Param("keyword") String keyword,
-            @Param("excluded") List<MemberStatus> excluded, // 여기로 Enum 리스트를 받습니다.
+            @Param("excluded") List<MemberStatus> excluded,
             Pageable pageable
     );
+
+    @Query("SELECT m.memberStatus, COUNT(m) " +
+            "FROM Member m " +
+            "WHERE m.memberStatus NOT IN :excludedStatuses  " +
+            "GROUP BY m.memberStatus")
+    List<Object[]> countMembersGroupedByMemberStatus(List<MemberStatus> excludedStatuses);
 }

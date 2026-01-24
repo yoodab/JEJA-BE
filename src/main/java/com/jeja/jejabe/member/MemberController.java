@@ -4,6 +4,7 @@ import com.jeja.jejabe.global.response.ApiResponseForm;
 import com.jeja.jejabe.member.domain.MemberStatus;
 import com.jeja.jejabe.member.dto.MemberCreateRequestDto;
 import com.jeja.jejabe.member.dto.MemberDto;
+import com.jeja.jejabe.member.dto.MemberStatisticsResponse;
 import com.jeja.jejabe.member.dto.MemberUpdateRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -63,6 +64,12 @@ public class MemberController {
     public ResponseEntity<ApiResponseForm<Void>> deleteMember(@PathVariable Long memberId) {
         memberService.deleteMember(memberId);
         return ResponseEntity.ok(ApiResponseForm.success("멤버가 성공적으로 삭제되었습니다."));
+    }
+
+    @GetMapping("/statistics")
+    public ResponseEntity<ApiResponseForm<MemberStatisticsResponse>> getStatistics() {
+        MemberStatisticsResponse response = memberService.getStatistics();
+        return ResponseEntity.ok(ApiResponseForm.success(response));
     }
 
     @GetMapping("/admin/unassigned") // URL: /api/members/admin/unassigned

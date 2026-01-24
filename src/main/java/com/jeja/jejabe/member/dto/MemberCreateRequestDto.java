@@ -17,6 +17,7 @@ public class MemberCreateRequestDto {
     private LocalDate birthDate;
     private Gender gender;
     private MemberStatus memberStatus;
+    private String memberImageUrl;
 
     private Set<MemberRole> roles;
 }
