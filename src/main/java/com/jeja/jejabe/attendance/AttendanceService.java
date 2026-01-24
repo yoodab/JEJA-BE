@@ -100,7 +100,7 @@ public class AttendanceService {
                 throw new GeneralException(CommonErrorCode.BAD_REQUEST); // 입력값 부족 에러
             }
             String name = dto.getName();
-            String identifier = dto.getBirthDate();
+            LocalDate identifier = dto.getBirthDate();
             member = memberRepository.findByNameAndBirthDate(name, identifier)
                     .orElseThrow(() -> new GeneralException(CommonErrorCode.MEMBER_NOT_FOUND_FOR_CHECK_IN));
         }

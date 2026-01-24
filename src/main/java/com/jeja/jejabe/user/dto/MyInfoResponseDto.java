@@ -7,6 +7,7 @@ import com.jeja.jejabe.member.domain.MemberRole;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Getter
@@ -15,7 +16,7 @@ public class MyInfoResponseDto {
     private String loginId;
     private String name;
     private String phone;
-    private String birthDate;
+    private LocalDate birthDate;
 
     private String role;
     private String status;
@@ -28,7 +29,7 @@ public class MyInfoResponseDto {
     private Set<MemberRole> memberRoles;
 
     @Builder
-    private MyInfoResponseDto(Long userId, String loginId, String name, String phone, String birthDate, String role, String status, String position, Long soonId, String soonName, boolean hasAccount, Set<MemberRole> memberRoles) {
+    private MyInfoResponseDto(Long userId, String loginId, String name, String phone, LocalDate birthDate, String role, String status, String position, Long soonId, String soonName, boolean hasAccount, Set<MemberRole> memberRoles) {
         this.userId = userId;
         this.loginId = loginId;
         this.name = name;

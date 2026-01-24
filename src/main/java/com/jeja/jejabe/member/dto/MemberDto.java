@@ -1,10 +1,12 @@
 package com.jeja.jejabe.member.dto;
 
+import com.jeja.jejabe.member.domain.Gender;
 import com.jeja.jejabe.member.domain.Member;
 import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.member.domain.MemberStatus;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,13 +15,13 @@ public class MemberDto {
     private final Long memberId;
     private final String name;
     private final String phone;
-    private final String birthDate;
+    private final LocalDate birthDate;
     private final MemberStatus memberStatus;
     private final String memberImageUrl;
     private final Set<MemberRole> roles;
-    private final boolean hasAccount; // 웹 계정 등록 여부
-    private final String gender; // "남성" or "여성"
-    private final int age;       // 만 나이 계산
+    private final boolean hasAccount;
+    private final String gender;
+    private final int age;
 
     public MemberDto(Member member) {
         this.memberId = member.getId();
@@ -30,16 +32,17 @@ public class MemberDto {
         this.hasAccount = (member.getUser() != null);
         this.roles = new HashSet<>(member.getRoles());
         this.memberImageUrl = member.getMemberImageUrl();
-        this.gender = member.getGender();
-        // 생년월일(String YYYY-MM-DD)로 나이 계산 로직 (간단 버전)
+        this.gender = (member.getGender() != null) ? member.getGender().getDescription() : null;
         this.age = calculateAge(member.getBirthDate());
     }
 
-    private int calculateAge(String birthDate) {
-        if (birthDate == null || birthDate.length() < 4) return 0;
-        try {
-            int birthYear = Integer.parseInt(birthDate.substring(0, 4));
-            return java.time.LocalDate.now().getYear() - birthYear + 1; // 한국 나이 or 만 나이
-        } catch (NumberFormatException e) { return 0; }
+    private int calculateAge(LocalDate birthDate) {
+        if (birthDate == null) return 0;
+
+        int birthYear = birthDate.getYear();
+        int currentYear = LocalDate.now().getYear();
+
+        // 한국 나이 (연 나이): 현재연도 - 출생연도 + 1
+        return currentYear - birthYear + 1;
     }
 }

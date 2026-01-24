@@ -3,6 +3,8 @@ package com.jeja.jejabe.newcomer.dto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Getter
 @NoArgsConstructor
 public class NewcomerUpdateRequestDto {
@@ -10,6 +12,7 @@ public class NewcomerUpdateRequestDto {
     private String address;
     private Long managerMemberId;
     private String assignmentNote;
+    private LocalDate birthDate;
 
     // [추가] 상태 텍스트 3종
     private String firstStatus;

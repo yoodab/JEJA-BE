@@ -4,6 +4,7 @@ import com.jeja.jejabe.newcomer.domain.Newcomer;
 import com.jeja.jejabe.newcomer.domain.NewcomerStatus;
 import jakarta.persistence.Column;
 import lombok.Getter;
+import org.springframework.cglib.core.Local;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,7 +16,7 @@ public class NewcomerDetailResponseDto {
     private final LocalDate registrationDate;
     private final String name;
     private final String gender;
-    private final String birthDate;
+    private final LocalDate birthDate;
     private final String phone;
     private final String address;
     private final String managerName;
@@ -37,7 +38,7 @@ public class NewcomerDetailResponseDto {
         this.newcomerId = newcomer.getNewcomerId();
         this.registrationDate = newcomer.getRegistrationDate();
         this.name = newcomer.getName();
-        this.gender = newcomer.getGender();
+        this.gender = newcomer.getGender().getDescription();
         this.birthDate = newcomer.getBirthDate();
         this.phone = newcomer.getPhone();
         this.address = newcomer.getAddress();

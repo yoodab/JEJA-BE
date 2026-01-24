@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional // 클래스 레벨에 선언하면 모든 public 메소드에 트랜잭션 적용
+@Transactional
 public class MemberService {
 
     private final MemberRepository memberRepository;
@@ -48,12 +48,14 @@ public class MemberService {
 
     // 3. 새 멤버 등록
     public Long createMember(MemberCreateRequestDto requestDto) {
+
         Member newMember = Member.builder()
                 .name(requestDto.getName())
                 .phone(requestDto.getPhone())
                 .birthDate(requestDto.getBirthDate())
                 .memberStatus(requestDto.getMemberStatus())
                 .role(MemberRole.MEMBER)
+                .gender(requestDto.getGender())
                 .build();
 
         Member savedMember = memberRepository.save(newMember);

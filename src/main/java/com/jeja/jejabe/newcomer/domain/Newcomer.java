@@ -2,16 +2,16 @@ package com.jeja.jejabe.newcomer.domain;
 
 import com.jeja.jejabe.global.exception.CommonErrorCode;
 import com.jeja.jejabe.global.exception.GeneralException;
+import com.jeja.jejabe.member.domain.Gender;
 import com.jeja.jejabe.member.domain.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.sql.ast.spi.LockingClauseStrategy;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "newcomer")
@@ -25,8 +25,8 @@ public class Newcomer {
 
     private LocalDate registrationDate; // 등록일
     private String name;
-    private String gender;
-    private String birthDate;
+    private Gender gender;
+    private LocalDate birthDate;
     private String phone;
     private String address;
 
@@ -50,7 +50,7 @@ public class Newcomer {
     private String assignmentNote; // 비고/메모
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false,length = 30)
+    @Column(nullable = false, length = 30)
     private NewcomerStatus status; // 관리 상태 (MANAGING, GRADUATED 등)
 
     @Column(nullable = false)
@@ -61,7 +61,7 @@ public class Newcomer {
     private Member registeredMember;
 
     @Builder
-    public Newcomer(String name, String gender, String birthDate, String phone,
+    public Newcomer(String name, Gender gender, LocalDate birthDate, String phone,
                     Member manager, String profileImageUrl, String address,
                     String firstStatus, String assignmentNote) {
         this.registrationDate = LocalDate.now();
@@ -81,7 +81,7 @@ public class Newcomer {
     // [비즈니스 로직] 전체 정보 수정 (이미지, 상태 텍스트, 담당자 등 포함)
     public void updateInfo(String address, String phone, String assignmentNote,
                            String firstStatus, String middleStatus, String recentStatus,
-                           String profileImageUrl, Member newManager) {
+                           String profileImageUrl, Member newManager, LocalDate birthDate) {
         this.address = address;
         this.phone = phone;
         this.assignmentNote = assignmentNote;
@@ -89,7 +89,7 @@ public class Newcomer {
         this.middleStatus = middleStatus;
         this.recentStatus = recentStatus;
         this.profileImageUrl = profileImageUrl;
-
+        this.birthDate = birthDate;
         if (newManager != null) {
             this.manager = newManager;
         }
