@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -122,8 +123,10 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberDto> getUnassignedMembers() {
-        return memberRepository.findUnassignedMembers().stream()
+    public List<MemberDto> getUnassignedMembers(Integer year) {
+        int targetYear = (year != null) ? year : LocalDate.now().getYear();
+
+        return memberRepository.findUnassignedMembersByYear(targetYear).stream()
                 .map(MemberDto::new)
                 .collect(Collectors.toList());
     }

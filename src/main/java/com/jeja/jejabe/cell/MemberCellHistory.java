@@ -15,8 +15,7 @@ import java.time.LocalDate;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberCellHistory {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "history_id")
     private Long historyId;
 
@@ -29,29 +28,31 @@ public class MemberCellHistory {
     private Cell cell;
 
     @Column(nullable = false)
-    private LocalDate startDate; // 이 셀에 배정된 시작일
-
-    private LocalDate endDate;   // 이 셀에서 나간 종료일
+    private LocalDate startDate;
 
     @Column(nullable = false)
-    private boolean isActive;    // 현재 활동 중인 셀인지를 나타내는 플래그
+    private boolean isActive;
 
     @Column(nullable = false)
-    private boolean isLeader;    // 이 셀에서 리더(순장)인지 여부
+    private boolean isLeader;
 
     @Builder
-    public MemberCellHistory(Member member, Cell cell, LocalDate startDate, boolean isLeader) {
+    public MemberCellHistory(Member member, Cell cell, boolean isLeader) {
         this.member = member;
         this.cell = cell;
-        this.startDate = startDate;
-        this.endDate = null; // 처음 생성 시 종료일은 없음
-        this.isActive = true; // 처음 생성 시 활동 상태
+        this.startDate = LocalDate.now();
+        this.isActive = false;
         this.isLeader = isLeader;
     }
 
-    // 현재 활동을 종료시키는 비즈니스 메소드
-    public void endActivity(LocalDate endDate) {
-        this.isActive = false;
-        this.endDate = endDate;
+    // 순 이동/리더 변경 (수정)
+    public void changeAssignment(Cell newCell, boolean isLeader) {
+        this.cell = newCell;
+        this.isLeader = isLeader;
+    }
+
+    // 상태 변경 (활성화/비활성화)
+    public void updateStatus(boolean isActive) {
+        this.isActive = isActive;
     }
 }

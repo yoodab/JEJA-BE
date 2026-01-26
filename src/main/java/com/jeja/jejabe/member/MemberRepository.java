@@ -28,9 +28,15 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     List<Member> findAllByMemberStatusNotIn(List<MemberStatus> inactive);
 
     // 미배정 인원 조회: 현재 활성화된 CellHistory가 없는 멤버
-    @Query("SELECT m FROM Member m WHERE m.memberStatus = 'ACTIVE' AND m.id NOT IN " +
-            "(SELECT h.member.id FROM MemberCellHistory h WHERE h.isActive = true)")
-    List<Member> findUnassignedMembers();
+    @Query("SELECT m FROM Member m " +
+            "WHERE m.memberStatus = 'ACTIVE' " +
+            "AND m.id NOT IN (" +
+            "SELECT h.member.id " +
+            "FROM MemberCellHistory h " +
+            "JOIN h.cell c " +
+            "WHERE c.year = :year " +
+            ")")
+    List<Member> findUnassignedMembersByYear(@Param("year") Integer year);
 
     // 새신자팀(특정 클럽)에 속한 멤버 조회 (담당 MD 후보용)
     @Query("SELECT cm.member FROM ClubMember cm WHERE cm.club.type = :clubType")
@@ -47,11 +53,11 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Query("SELECT m FROM Member m WHERE " +
             "(:keyword IS NULL OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) " +
-            "AND (:status IS NULL OR m.memberStatus = :status) " +  // 여기 추가됨
+            "AND (:status IS NULL OR m.memberStatus = :status) " +
             "AND m.memberStatus NOT IN :excluded")
     Page<Member> findAllByKeywordAndStatus(
             @Param("keyword") String keyword,
-            @Param("status") MemberStatus status,   // 파라미터 추가
+            @Param("status") MemberStatus status,
             @Param("excluded") List<MemberStatus> excluded,
             Pageable pageable
     );

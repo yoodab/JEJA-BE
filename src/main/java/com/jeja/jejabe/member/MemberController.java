@@ -73,9 +73,11 @@ public class MemberController {
         return ResponseEntity.ok(ApiResponseForm.success(response));
     }
 
-    @GetMapping("/admin/unassigned") // URL: /api/members/admin/unassigned
-    public ResponseEntity<ApiResponseForm<List<MemberDto>>> getUnassignedMembers() {
-        List<MemberDto> unassignedMembers = memberService.getUnassignedMembers();
+    @GetMapping("/admin/unassigned") // URL: /api/members/admin/unassigned?year=2026
+    public ResponseEntity<ApiResponseForm<List<MemberDto>>> getUnassignedMembers(
+            @RequestParam(name = "year") Integer year // 파라미터 추가
+    ) {
+        List<MemberDto> unassignedMembers = memberService.getUnassignedMembers(year);
         return ResponseEntity.ok(ApiResponseForm.success(unassignedMembers));
     }
 }

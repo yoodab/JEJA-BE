@@ -40,8 +40,7 @@ public class Cell {
     }
 
     // 셀 정보 업데이트 메소드
-    public void update(String cellName, Integer year) {
+    public void update(String cellName) {
         this.cellName = cellName;
-        this.year = year;
     }
 }

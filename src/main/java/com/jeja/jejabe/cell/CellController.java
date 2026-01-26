@@ -1,10 +1,7 @@
 package com.jeja.jejabe.cell;
 
 import com.jeja.jejabe.auth.UserDetailsImpl;
-import com.jeja.jejabe.cell.dto.CellCreateRequestDto;
-import com.jeja.jejabe.cell.dto.CellDetailResponseDto;
-import com.jeja.jejabe.cell.dto.CellUpdateRequestDto;
-import com.jeja.jejabe.cell.dto.MyCellResponseDto;
+import com.jeja.jejabe.cell.dto.*;
 import com.jeja.jejabe.global.response.ApiResponseForm;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,13 +38,6 @@ public class CellController {
         return ResponseEntity.ok(ApiResponseForm.success(newCellId, "새로운 셀이 생성되었습니다."));
     }
 
-    @PostMapping("/admin/cells/{cellId}/members")
-    public ResponseEntity<ApiResponseForm<Void>> assignMembersToCell(
-            @PathVariable Long cellId,
-            @RequestBody List<Long> memberIds) {
-        cellService.assignMembersToCell(cellId, memberIds);
-        return ResponseEntity.ok(ApiResponseForm.success("셀에 멤버가 배정되었습니다."));
-    }
 
     @PatchMapping("/admin/cells/{cellId}")
     public ResponseEntity<ApiResponseForm<Void>> updateCell(
@@ -61,5 +51,19 @@ public class CellController {
     public ResponseEntity<ApiResponseForm<Void>> deleteCell(@PathVariable Long cellId) {
         cellService.deleteCell(cellId);
         return ResponseEntity.ok(ApiResponseForm.success("셀이 삭제되었습니다."));
+    }
+
+    @PutMapping("/admin/cells/members/batch")
+    public ResponseEntity<ApiResponseForm<Void>> updateCellMembersBatch(
+            @RequestBody CellMemberBatchUpdateRequestDto requestDto) {
+
+        cellService.updateCellMembersBatch(requestDto);
+        return ResponseEntity.ok(ApiResponseForm.success("전체 순 구성원이 수정되었습니다."));
+    }
+
+    @PostMapping("/admin/activate")
+    public ResponseEntity<ApiResponseForm<Void>> activateCells(@RequestParam Integer year) {
+        cellService.activateCellsByYear(year);
+        return ResponseEntity.ok(ApiResponseForm.success(year + "년도 순이 활성화되었습니다. (이전 연도 기록은 종료됨)"));
     }
 }

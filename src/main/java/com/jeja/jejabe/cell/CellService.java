@@ -1,10 +1,7 @@
 package com.jeja.jejabe.cell;
 
 import com.jeja.jejabe.auth.User;
-import com.jeja.jejabe.cell.dto.CellCreateRequestDto;
-import com.jeja.jejabe.cell.dto.CellDetailResponseDto;
-import com.jeja.jejabe.cell.dto.CellUpdateRequestDto;
-import com.jeja.jejabe.cell.dto.MyCellResponseDto;
+import com.jeja.jejabe.cell.dto.*;
 import com.jeja.jejabe.global.exception.CommonErrorCode;
 import com.jeja.jejabe.global.exception.GeneralException;
 import com.jeja.jejabe.member.domain.Member;
@@ -14,7 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,53 +25,28 @@ public class CellService {
 
     // 1. 새로운 Cell 생성 (리더 지정 포함)
     public Long createCell(CellCreateRequestDto requestDto) {
-        // a. 새로운 Cell 객체 생성 및 저장
-        Cell newCell = Cell.builder()
+        Cell cell = Cell.builder()
                 .cellName(requestDto.getCellName())
                 .year(requestDto.getYear())
                 .build();
-        Cell savedCell = cellRepository.save(newCell);
+        Cell savedCell = cellRepository.save(cell);
 
-        // b. 지정된 리더(순장)를 찾아 Cell에 배정
-        Member leader = memberRepository.findById(requestDto.getLeaderMemberId())
-                .orElseThrow(() -> new GeneralException(CommonErrorCode.MEMBER_NOT_FOUND));
+        // 리더 배정 (Draft 상태로 저장됨)
+        if (requestDto.getLeaderMemberId() != null) {
+            Member leader = memberRepository.findById(requestDto.getLeaderMemberId())
+                    .orElseThrow(() -> new GeneralException(CommonErrorCode.MEMBER_NOT_FOUND));
 
-        // c. 리더의 기존 셀 활동을 종료시킴 (있을 경우)
-        terminatePreviousCellActivity(leader);
-
-        // d. 새로운 셀 배정 기록 생성 (리더로 지정)
-        MemberCellHistory leaderHistory = MemberCellHistory.builder()
-                .member(leader)
-                .cell(savedCell)
-                .startDate(LocalDate.now())
-                .isLeader(true) // ★★★ 리더로 지정 ★★★
-                .build();
-        memberCellHistoryRepository.save(leaderHistory);
+            MemberCellHistory history = MemberCellHistory.builder()
+                    .cell(savedCell)
+                    .member(leader)
+                    .isLeader(true)
+                    .build();
+            memberCellHistoryRepository.save(history);
+        }
 
         return savedCell.getCellId();
     }
 
-    // 2. 특정 Cell에 멤버(순원) 배정
-    public void assignMembersToCell(Long cellId, List<Long> memberIds) {
-        Cell cell = cellRepository.findById(cellId)
-                .orElseThrow(() -> new GeneralException(CommonErrorCode.CELL_NOT_FOUND)); // ★★★ 에러코드 추가 필요
-
-        List<Member> membersToAssign = memberRepository.findAllById(memberIds);
-
-        for (Member member : membersToAssign) {
-            // a. 멤버의 기존 셀 활동을 종료시킴
-            terminatePreviousCellActivity(member);
-
-            // b. 새로운 셀 배정 기록 생성 (일반 순원으로 지정)
-            MemberCellHistory newHistory = MemberCellHistory.builder()
-                    .member(member)
-                    .cell(cell)
-                    .startDate(LocalDate.now())
-                    .isLeader(false) // ★★★ 일반 멤버로 지정 ★★★
-                    .build();
-            memberCellHistoryRepository.save(newHistory);
-        }
-    }
 
     @Transactional(readOnly = true)
     public MyCellResponseDto getMyCellInfo(User user) {
@@ -113,24 +85,87 @@ public class CellService {
         Cell cell = cellRepository.findById(cellId)
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.CELL_NOT_FOUND));
 
-        cell.update(requestDto.getCellName(), requestDto.getYear());
+        cell.update(requestDto.getCellName());
     }
 
     // ★★★ 3. Cell 삭제 ★★★
     public void deleteCell(Long cellId) {
-        // 해당 Cell에 배정된 멤버가 있는지 확인하는 로직 추가 가능
-        // (MemberCellHistory에 데이터가 있으면 삭제를 막는 등)
         Cell cell = cellRepository.findById(cellId)
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.CELL_NOT_FOUND));
 
-        // 연관된 MemberCellHistory도 함께 삭제됨 (CascadeType.ALL)
         cellRepository.delete(cell);
     }
 
+    @Transactional
+    public void updateCellMembersBatch(CellMemberBatchUpdateRequestDto requestDto) {
+        // 1. 요청에 포함된 모든 Cell ID와 Member ID 수집
+        List<Long> targetCellIds = requestDto.getCellUpdates().stream()
+                .map(CellMemberBatchUpdateRequestDto.CellUpdateInfo::getCellId)
+                .toList();
 
-    // (Helper Method) 멤버의 이전 셀 활동을 종료시키는 로직
-    private void terminatePreviousCellActivity(Member member) {
-        memberCellHistoryRepository.findByMemberAndIsActiveTrue(member)
-                .ifPresent(history -> history.endActivity(LocalDate.now().minusDays(1)));
+        // 2. 요청된 순(Cell) 엔티티들 모두 조회
+        List<Cell> targetCells = cellRepository.findAllById(targetCellIds);
+        Map<Long, Cell> cellMap = targetCells.stream()
+                .collect(Collectors.toMap(Cell::getCellId, c -> c));
+
+        // 3. 해당 순들에 현재 소속된 모든 멤버 기록(History) 조회 (삭제 대상 판별용)
+        //    (주의: year가 일치하는지 확인 필요, 여기선 targetCells의 year를 기준)
+        List<MemberCellHistory> existingHistories = memberCellHistoryRepository.findAllByCellInAndIsActiveTrue(targetCells);
+
+        // 4. 업데이트 로직 수행
+        //    (Set을 이용해 '이번 요청에서 처리된 멤버 ID'를 추적)
+        Set<Long> processedMemberIds = new HashSet<>();
+
+        for (CellMemberBatchUpdateRequestDto.CellUpdateInfo info : requestDto.getCellUpdates()) {
+            Cell targetCell = cellMap.get(info.getCellId());
+            if (targetCell == null) continue;
+
+            // 리더 + 순원 ID 합치기
+            Set<Long> membersInCell = new HashSet<>();
+            if (info.getMemberIds() != null) membersInCell.addAll(info.getMemberIds());
+            if (info.getLeaderId() != null) membersInCell.add(info.getLeaderId());
+
+            // 멤버들 처리
+            List<Member> members = memberRepository.findAllById(membersInCell);
+            for (Member member : members) {
+                boolean isLeader = member.getId().equals(info.getLeaderId());
+                processedMemberIds.add(member.getId()); // 처리됨 표시
+
+                // 이미 활동 중인 기록이 있는지 전수 조사 (다른 순에서 이동해온 경우 포함)
+                Optional<MemberCellHistory> activeHistoryOpt =
+                        memberCellHistoryRepository.findByMemberAndIsActiveTrue(member);
+
+                if (activeHistoryOpt.isPresent()) {
+                    // [이동/수정]: 기존 기록을 이 셀로 업데이트
+                    activeHistoryOpt.get().changeAssignment(targetCell, isLeader);
+                } else {
+                    // [신규]: 기록 없으면 생성
+                    memberCellHistoryRepository.save(MemberCellHistory.builder()
+                            .cell(targetCell)
+                            .member(member)
+                            .isLeader(isLeader)
+                            .build());
+                }
+            }
+        }
+
+        // 5. [삭제 처리]
+        // 기존에 이 순들에 있었는데, 이번 요청(processedMemberIds)에 포함되지 않은 사람 -> 삭제
+        // (즉, 명단에서 아예 빠진 사람)
+        for (MemberCellHistory history : existingHistories) {
+            if (!processedMemberIds.contains(history.getMember().getId())) {
+                memberCellHistoryRepository.delete(history);
+            }
+        }
     }
+
+
+    public void activateCellsByYear(Integer year) {
+        // Step A. 기존에 활성화되어 있던 모든 기록(작년 기록 등)을 비활성화(종료) 처리
+        memberCellHistoryRepository.deactivateAllActiveHistories();
+
+        // Step B. 요청된 연도(새해)의 모든 기록을 활성화
+        memberCellHistoryRepository.activateHistoriesByYear(year);
+    }
+
 }
