@@ -52,8 +52,12 @@ public class AdminInitializer implements CommandLineRunner {
 
         // 4. 예배 카테고리 생성 (출석 체크 및 일정 등록용)
         createWorshipCategoryIfNeeded("주일 청년부 예배");
-        createWorshipCategoryIfNeeded("주일 3부 대예배");
+        createWorshipCategoryIfNeeded("주일 3부예배");
+        createWorshipCategoryIfNeeded("주일 2부예배");
+        createWorshipCategoryIfNeeded("주일 1부예배");
         createWorshipCategoryIfNeeded("금요 기도회");
+        createWorshipCategoryIfNeeded("수요 1부예배");
+        createWorshipCategoryIfNeeded("수요 2부예배");
     }
 
     private Member createAdminIfNeeded() {
