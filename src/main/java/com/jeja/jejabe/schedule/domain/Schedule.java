@@ -2,7 +2,7 @@ package com.jeja.jejabe.schedule.domain;
 
 import com.jeja.jejabe.album.Album;
 import com.jeja.jejabe.global.entity.BaseTimeEntity;
-import com.jeja.jejabe.schedule.dto.ScheduleRequestDto;
+import com.jeja.jejabe.schedule.dto.ScheduleUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -11,6 +11,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -49,6 +52,11 @@ public class Schedule extends BaseTimeEntity {
 
     private LocalDate recurrenceEndDate;
 
+    @ElementCollection
+    @CollectionTable(name = "schedule_exceptions", joinColumns = @JoinColumn(name = "schedule_id"))
+    @Column(name = "exception_date")
+    private Set<LocalDate> exceptionDates = new HashSet<>();
+
     @OneToOne(mappedBy = "schedule", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Album album;
 
@@ -73,7 +81,7 @@ public class Schedule extends BaseTimeEntity {
         this.worshipCategory = worshipCategory;
     }
 
-    public void update(ScheduleRequestDto dto, WorshipCategory newCategory) {
+    public void update(ScheduleUpdateRequestDto dto, WorshipCategory newCategory) {
         this.title = dto.getTitle();
         this.content = dto.getContent();
         this.startDate = dto.getStartDate();
@@ -83,8 +91,15 @@ public class Schedule extends BaseTimeEntity {
         this.sharingScope = dto.getSharingScope();
         this.recurrenceRule = dto.getRecurrenceRule() == null ? RecurrenceRule.NONE : dto.getRecurrenceRule();
         this.recurrenceEndDate = dto.getRecurrenceEndDate();
-
-        // 카테고리 업데이트
         this.worshipCategory = newCategory;
+    }
+
+    // [NEW] 비즈니스 로직 메서드
+    public void addExceptionDate(LocalDate date) {
+        this.exceptionDates.add(date);
+    }
+
+    public void changeRecurrenceEndDate(LocalDate endDate) {
+        this.recurrenceEndDate = endDate;
     }
 }

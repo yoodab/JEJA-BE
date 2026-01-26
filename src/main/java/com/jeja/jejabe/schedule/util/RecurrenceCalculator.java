@@ -7,49 +7,69 @@ import com.jeja.jejabe.schedule.dto.ScheduleResponseDto;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class RecurrenceCalculator {
 
     public static List<ScheduleResponseDto> generateSchedules(Schedule schedule, int year, int month) {
-        List<LocalDateTime> occurrences = new ArrayList<>();
-        RecurrenceRule rule = schedule.getRecurrenceRule();
+        List<ScheduleResponseDto> result = new ArrayList<>();
 
-        if (rule == null || rule == RecurrenceRule.NONE) {
-            // 반복 없는 경우, 해당 월에 일정이 포함되는지 확인
-            if (schedule.getStartDate().getYear() == year && schedule.getStartDate().getMonthValue() == month) {
-                occurrences.add(schedule.getStartDate());
+        YearMonth targetMonth = YearMonth.of(year, month);
+        LocalDateTime monthStart = targetMonth.atDay(1).atStartOfDay();
+        LocalDateTime monthEnd = targetMonth.atEndOfMonth().atTime(23, 59, 59);
+
+        // 반복 없음 (단순 날짜 체크)
+        if (schedule.getRecurrenceRule() == RecurrenceRule.NONE) {
+            if (isOverlapping(schedule.getStartDate(), schedule.getEndDate(), monthStart, monthEnd)) {
+                result.add(new ScheduleResponseDto(schedule));
             }
-        } else {
-            // 반복 있는 경우, 해당 월의 발생일 계산
-            LocalDateTime cursor = schedule.getStartDate();
-            LocalDate recurrenceEnd = schedule.getRecurrenceEndDate();
-            YearMonth targetMonth = YearMonth.of(year, month);
-
-            while (!cursor.toLocalDate().isAfter(recurrenceEnd) && !YearMonth.from(cursor).isAfter(targetMonth)) {
-                if (YearMonth.from(cursor).equals(targetMonth)) {
-                    occurrences.add(cursor);
-                }
-
-                cursor = switch (rule) {
-                    case DAILY -> cursor.plusDays(1);
-                    case WEEKLY -> cursor.plusWeeks(1);
-                    case MONTHLY -> cursor.plusMonths(1);
-                    case YEARLY -> cursor.plusYears(1);
-                    default -> recurrenceEnd.plusDays(1).atStartOfDay(); // 무한 루프 방지
-                };
-            }
+            return result;
         }
 
-        // DTO로 변환
-        long durationMinutes = java.time.Duration.between(schedule.getStartDate(), schedule.getEndDate()).toMinutes();
-        return occurrences.stream()
-                .map(occurrenceStart -> {
-                    LocalDateTime occurrenceEnd = occurrenceStart.plusMinutes(durationMinutes);
-                    return new ScheduleResponseDto(schedule, occurrenceStart, occurrenceEnd);
-                })
-                .collect(Collectors.toList());
+        // 반복 일정 계산
+        LocalDateTime currentStart = schedule.getStartDate();
+        LocalDateTime currentEnd = schedule.getEndDate();
+        long durationSeconds = ChronoUnit.SECONDS.between(currentStart, currentEnd);
+        LocalDate recurEnd = schedule.getRecurrenceEndDate();
+
+        while (currentStart.isBefore(monthEnd)) {
+            // 1. 반복 종료일 체크
+            if (recurEnd != null && currentStart.toLocalDate().isAfter(recurEnd)) {
+                break;
+            }
+
+            // 2. [NEW] 예외 날짜 체크 (THIS_ONLY로 삭제/수정된 날짜는 건너뜀)
+            if (schedule.getExceptionDates().contains(currentStart.toLocalDate())) {
+                currentStart = getNextOccurrence(currentStart, schedule.getRecurrenceRule());
+                continue;
+            }
+
+            // 3. 이번 달 범위 내인지 확인
+            LocalDateTime calculatedEnd = currentStart.plusSeconds(durationSeconds);
+            if (isOverlapping(currentStart, calculatedEnd, monthStart, monthEnd)) {
+                result.add(new ScheduleResponseDto(schedule, currentStart, calculatedEnd));
+            }
+
+            // 4. 다음 반복 날짜로 이동
+            currentStart = getNextOccurrence(currentStart, schedule.getRecurrenceRule());
+        }
+
+        return result;
+    }
+
+    private static LocalDateTime getNextOccurrence(LocalDateTime current, RecurrenceRule rule) {
+        return switch (rule) {
+            case DAILY -> current.plusDays(1);
+            case WEEKLY -> current.plusWeeks(1);
+            case MONTHLY -> current.plusMonths(1);
+            case YEARLY -> current.plusYears(1);
+            default -> current;
+        };
+    }
+
+    private static boolean isOverlapping(LocalDateTime start1, LocalDateTime end1, LocalDateTime start2, LocalDateTime end2) {
+        return start1.isBefore(end2) && end1.isAfter(start2);
     }
 }

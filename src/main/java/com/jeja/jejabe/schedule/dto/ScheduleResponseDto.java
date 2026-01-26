@@ -19,6 +19,9 @@ public class ScheduleResponseDto {
     private final SharingScope sharingScope;
     private final RecurrenceRule recurrenceRule;
 
+    private final Long worshipCategoryId;
+    private final String worshipCategoryName;
+
     // 일반 일정용 생성자
     public ScheduleResponseDto(Schedule schedule) {
         this.scheduleId = schedule.getScheduleId();
@@ -29,6 +32,13 @@ public class ScheduleResponseDto {
         this.location = schedule.getLocation();
         this.sharingScope = schedule.getSharingScope();
         this.recurrenceRule = schedule.getRecurrenceRule();
+        if (schedule.getWorshipCategory() != null) {
+            this.worshipCategoryId = schedule.getWorshipCategory().getId();
+            this.worshipCategoryName = schedule.getWorshipCategory().getName();
+        } else {
+            this.worshipCategoryId = null;
+            this.worshipCategoryName = null;
+        }
     }
 
     // 반복 일정용 생성자
@@ -41,5 +51,12 @@ public class ScheduleResponseDto {
         this.location = originalSchedule.getLocation();
         this.sharingScope = originalSchedule.getSharingScope();
         this.recurrenceRule = originalSchedule.getRecurrenceRule();
+        if (originalSchedule.getWorshipCategory() != null) {
+            this.worshipCategoryId = originalSchedule.getWorshipCategory().getId();
+            this.worshipCategoryName = originalSchedule.getWorshipCategory().getName();
+        } else {
+            this.worshipCategoryId = null;
+            this.worshipCategoryName = null;
+        }
     }
 }

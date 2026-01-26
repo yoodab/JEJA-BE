@@ -2,6 +2,7 @@ package com.jeja.jejabe.schedule;
 
 import com.jeja.jejabe.global.response.ApiResponseForm;
 import com.jeja.jejabe.schedule.domain.WorshipCategory;
+import com.jeja.jejabe.schedule.dto.WorshipCategoryRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,9 +26,8 @@ public class WorshipCategoryController {
     // 카테고리 생성 (예: "주일 3부 예배")
     @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR')")
     @PostMapping
-    public ResponseEntity<ApiResponseForm<WorshipCategory>> createCategory(@RequestBody String name) {
-        // 실제로는 DTO를 쓰는 게 좋지만 간단하게 처리
-        WorshipCategory category = repository.save(new WorshipCategory(name));
+    public ResponseEntity<ApiResponseForm<WorshipCategory>> createCategory(@RequestBody WorshipCategoryRequestDto request) {
+        WorshipCategory category = repository.save(new WorshipCategory(request.name()));
         return ResponseEntity.ok(ApiResponseForm.success(category));
     }
 
