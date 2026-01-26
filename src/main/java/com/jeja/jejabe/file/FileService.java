@@ -1,5 +1,6 @@
 package com.jeja.jejabe.file;
 
+import com.jeja.jejabe.file.dto.FileUploadResponseDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -7,14 +8,35 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class FileService {
 
     @Value("${file.upload-dir}")
-    private String fileDir; // 예: C:/uploads/ 또는 /app/uploads/ (마지막 슬래시 포함 여부 확인 필요)
+    private String fileDir;
+
+    public List<FileUploadResponseDto> uploadFiles(List<MultipartFile> multipartFiles, String folderName) throws IOException {
+        List<FileUploadResponseDto> responseDtos = new ArrayList<>();
+
+        // 파일이 없으면 빈 리스트 반환
+        if (multipartFiles == null || multipartFiles.isEmpty()) {
+            return responseDtos;
+        }
+
+        for (MultipartFile file : multipartFiles) {
+            if (!file.isEmpty()) {
+                String storedUrl = uploadFile(file, folderName);
+                responseDtos.add(new FileUploadResponseDto(storedUrl, file.getOriginalFilename()));
+            }
+        }
+
+        return responseDtos;
+    }
+
 
     public String uploadFile(MultipartFile multipartFile, String folderName) throws IOException {
         if (multipartFile == null || multipartFile.isEmpty()) {
