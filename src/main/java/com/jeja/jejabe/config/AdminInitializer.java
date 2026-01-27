@@ -13,7 +13,6 @@ import com.jeja.jejabe.club.ClubType;
 import com.jeja.jejabe.member.MemberRepository;
 import com.jeja.jejabe.member.domain.Member;
 import com.jeja.jejabe.member.domain.MemberStatus;
-import com.jeja.jejabe.schedule.WorshipCategoryRepository;
 import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -30,7 +29,6 @@ public class AdminInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final BoardRepository boardRepository;
     private final ClubRepository clubRepository;
-    private final WorshipCategoryRepository worshipCategoryRepository;
 
 
     @Override
@@ -50,14 +48,6 @@ public class AdminInitializer implements CommandLineRunner {
         createClubIfNeeded("예배팀", "예배 순서를 기획하고 준비하는 팀입니다.", ClubType.WORSHIP, null);
         createClubIfNeeded("방송팀", "음향 및 영상 송출을 담당합니다.", ClubType.BROADCAST, null);
 
-        // 4. 예배 카테고리 생성 (출석 체크 및 일정 등록용)
-        createWorshipCategoryIfNeeded("주일 청년부 예배");
-        createWorshipCategoryIfNeeded("주일 3부예배");
-        createWorshipCategoryIfNeeded("주일 2부예배");
-        createWorshipCategoryIfNeeded("주일 1부예배");
-        createWorshipCategoryIfNeeded("금요 기도회");
-        createWorshipCategoryIfNeeded("수요 1부예배");
-        createWorshipCategoryIfNeeded("수요 2부예배");
     }
 
     private Member createAdminIfNeeded() {
@@ -110,12 +100,5 @@ public class AdminInitializer implements CommandLineRunner {
         }
     }
 
-    private void createWorshipCategoryIfNeeded(String name) {
-        if (worshipCategoryRepository.findAll().stream().noneMatch(c -> c.getName().equals(name))) {
-            WorshipCategory category = new WorshipCategory(name);
-            worshipCategoryRepository.save(category);
-            System.out.println(">>> [INIT] 예배 카테고리 생성 완료: " + name);
-        }
-    }
 
 }
