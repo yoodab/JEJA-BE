@@ -1,6 +1,7 @@
 package com.jeja.jejabe.form.dto;
 
 import com.jeja.jejabe.form.domain.*;
+import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.Data;
 
 import java.util.List;
@@ -22,7 +23,7 @@ public class TemplateCreateRequestDto {
         private List<String> options;
         private boolean required;
         private boolean isMemberSpecific;
-        private Long linkedWorshipCategoryId;
+        private WorshipCategory linkedWorshipCategory;
     }
 
     @Data

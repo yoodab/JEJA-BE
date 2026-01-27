@@ -60,8 +60,7 @@ public class Schedule extends BaseTimeEntity {
     @OneToOne(mappedBy = "schedule", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private Album album;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "worship_category_id")
+    @Enumerated(EnumType.STRING)
     private WorshipCategory worshipCategory;
 
     @Builder
@@ -81,7 +80,7 @@ public class Schedule extends BaseTimeEntity {
         this.worshipCategory = worshipCategory;
     }
 
-    public void update(ScheduleUpdateRequestDto dto, WorshipCategory newCategory) {
+    public void update(ScheduleUpdateRequestDto dto) {
         this.title = dto.getTitle();
         this.content = dto.getContent();
         this.startDate = dto.getStartDate();
@@ -91,7 +90,7 @@ public class Schedule extends BaseTimeEntity {
         this.sharingScope = dto.getSharingScope();
         this.recurrenceRule = dto.getRecurrenceRule() == null ? RecurrenceRule.NONE : dto.getRecurrenceRule();
         this.recurrenceEndDate = dto.getRecurrenceEndDate();
-        this.worshipCategory = newCategory;
+        this.worshipCategory = dto.getWorshipCategory();
     }
 
     // [NEW] 비즈니스 로직 메서드

@@ -23,6 +23,7 @@ import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.schedule.domain.Schedule;
 import com.jeja.jejabe.schedule.ScheduleRepository;
 import com.jeja.jejabe.schedule.domain.ScheduleType;
+import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,7 +72,7 @@ public class FormService {
                     .options(options)
                     .required(qDto.isRequired())
                     .isMemberSpecific(qDto.isMemberSpecific())
-                    .linkedWorshipCategoryId(qDto.getLinkedWorshipCategoryId()) // [변경] 카테고리 ID 저장
+                    .linkedWorshipCategory(qDto.getLinkedWorshipCategory())
                     .orderIndex(i)
                     .build());
         }
@@ -164,18 +165,17 @@ public class FormService {
 
         for (FormAnswer ans : submission.getAnswers()) {
             // 질문에 연결된 WorshipCategory ID 확인
-            Long categoryId = ans.getQuestion().getLinkedWorshipCategoryId();
+            WorshipCategory category = ans.getQuestion().getLinkedWorshipCategory();
 
             // 연결된 카테고리가 없으면 일반 질문이므로 스킵
-            if (categoryId == null) continue;
+            if (category == null) continue;
 
             // 답변이 "true"이고 대상 멤버가 명확한 경우
             if ("true".equalsIgnoreCase(ans.getValue()) && ans.getTargetMember() != null) {
 
                 // 해당 주간 스케줄 중, 질문에 연결된 카테고리와 일치하는 스케줄 찾기
                 Schedule targetSchedule = weeklySchedules.stream()
-                        .filter(s -> s.getWorshipCategory() != null &&
-                                s.getWorshipCategory().getId().equals(categoryId))
+                        .filter(s -> s.getWorshipCategory() == category)
                         .findFirst()
                         .orElse(null);
 

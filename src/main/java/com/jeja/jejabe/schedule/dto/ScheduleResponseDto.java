@@ -1,9 +1,6 @@
 package com.jeja.jejabe.schedule.dto;
 
-import com.jeja.jejabe.schedule.domain.RecurrenceRule;
-import com.jeja.jejabe.schedule.domain.Schedule;
-import com.jeja.jejabe.schedule.domain.ScheduleType;
-import com.jeja.jejabe.schedule.domain.SharingScope;
+import com.jeja.jejabe.schedule.domain.*;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -19,7 +16,7 @@ public class ScheduleResponseDto {
     private final SharingScope sharingScope;
     private final RecurrenceRule recurrenceRule;
 
-    private final Long worshipCategoryId;
+    private final WorshipCategory worshipCategory;
     private final String worshipCategoryName;
 
     // 일반 일정용 생성자
@@ -32,13 +29,10 @@ public class ScheduleResponseDto {
         this.location = schedule.getLocation();
         this.sharingScope = schedule.getSharingScope();
         this.recurrenceRule = schedule.getRecurrenceRule();
-        if (schedule.getWorshipCategory() != null) {
-            this.worshipCategoryId = schedule.getWorshipCategory().getId();
-            this.worshipCategoryName = schedule.getWorshipCategory().getName();
-        } else {
-            this.worshipCategoryId = null;
-            this.worshipCategoryName = null;
-        }
+        this.worshipCategory = schedule.getWorshipCategory();
+        this.worshipCategoryName = schedule.getWorshipCategory() != null
+                ? schedule.getWorshipCategory().getDescription()
+                : null;
     }
 
     // 반복 일정용 생성자
@@ -51,12 +45,9 @@ public class ScheduleResponseDto {
         this.location = originalSchedule.getLocation();
         this.sharingScope = originalSchedule.getSharingScope();
         this.recurrenceRule = originalSchedule.getRecurrenceRule();
-        if (originalSchedule.getWorshipCategory() != null) {
-            this.worshipCategoryId = originalSchedule.getWorshipCategory().getId();
-            this.worshipCategoryName = originalSchedule.getWorshipCategory().getName();
-        } else {
-            this.worshipCategoryId = null;
-            this.worshipCategoryName = null;
-        }
+        this.worshipCategory = originalSchedule.getWorshipCategory();
+        this.worshipCategoryName = originalSchedule.getWorshipCategory() != null
+                ? originalSchedule.getWorshipCategory().getDescription()
+                : null;
     }
 }

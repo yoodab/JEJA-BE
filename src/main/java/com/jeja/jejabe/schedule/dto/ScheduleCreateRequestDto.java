@@ -3,6 +3,7 @@ package com.jeja.jejabe.schedule.dto;
 import com.jeja.jejabe.schedule.domain.RecurrenceRule;
 import com.jeja.jejabe.schedule.domain.ScheduleType;
 import com.jeja.jejabe.schedule.domain.SharingScope;
+import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,7 +30,7 @@ public class ScheduleCreateRequestDto {
     private LocalDate recurrenceEndDate;
 
     // 카테고리
-    private Long worshipCategoryId;
+    private WorshipCategory worshipCategory;
 
     private boolean createAlbum;
 
@@ -42,8 +43,7 @@ public class ScheduleCreateRequestDto {
                 .type(updateDto.getType())
                 .location(updateDto.getLocation())
                 .sharingScope(updateDto.getSharingScope())
-                .worshipCategoryId(updateDto.getWorshipCategoryId())
-                // 일단 가져온 값을 기본으로 설정
+                .worshipCategory(updateDto.getWorshipCategory())
                 .recurrenceRule(updateDto.getRecurrenceRule())
                 .recurrenceEndDate(updateDto.getRecurrenceEndDate());
     }

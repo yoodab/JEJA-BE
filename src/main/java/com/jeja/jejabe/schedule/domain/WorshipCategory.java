@@ -1,27 +1,20 @@
 package com.jeja.jejabe.schedule.domain;
 
-import com.jeja.jejabe.global.entity.BaseTimeEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
-@Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class WorshipCategory extends BaseTimeEntity {
+@RequiredArgsConstructor
+public enum WorshipCategory {
+    SUNDAY_SERVICE_1("주일예배 1부"),
+    SUNDAY_SERVICE_2("주일예배 2부"),
+    SUNDAY_SERVICE_3("주일예배 3부"),
+    WEDNESDAY_SERVICE_1("수요예배 1부"),
+    WEDNESDAY_SERVICE_2("수요예배 2부"),
+    FRIDAY_PRAYER("금요기도회"),
+    DAWN_PRAYER("새벽기도회"),
+    YOUTH_SERVICE("청년부 예배"),
+    ETC("기타");
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String name; // 예: "주일 3부 예배", "금요 기도회"
-
-
-    public WorshipCategory(String name) {
-        this.name = name;
-    }
+    private final String description;
 }
