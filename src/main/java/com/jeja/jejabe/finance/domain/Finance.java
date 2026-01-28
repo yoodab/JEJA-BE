@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -19,46 +21,45 @@ public class Finance extends BaseTimeEntity {
     private Long id;
 
     @Column(nullable = false)
-    private LocalDate transactionDate; // 거래 날짜
+    private LocalDate transactionDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private FinanceType type; // 수입/지출
+    private FinanceType type;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private FinanceCategory category;
 
-    private String detail; // 세부내용 (김철수, 이마트 장보기...)
+    private String detail;
 
     @Column(nullable = false)
-    private Long amount; // 금액
+    private Long amount;
 
-    private String receiptUrl; // 영수증 이미지 URL
+    // 다중 영수증 이미지
+    @ElementCollection
+    @CollectionTable(name = "finance_receipts", joinColumns = @JoinColumn(name = "finance_id"))
+    @Column(name = "image_url", length = 5000)
+    private List<String> receiptImages = new ArrayList<>();
 
-    // 관련 일정 (선택사항: 수련회 등 행사와 연결)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "schedule_id")
-    private Schedule schedule;
+
 
     @Builder
-    public Finance(LocalDate transactionDate, FinanceType type, FinanceCategory category, String detail, Long amount, String receiptUrl, Schedule schedule) {
+    public Finance(LocalDate transactionDate, FinanceType type, FinanceCategory category, String detail, Long amount, List<String> receiptImages) {
         this.transactionDate = transactionDate;
         this.type = type;
         this.category = category;
         this.detail = detail;
         this.amount = amount;
-        this.receiptUrl = receiptUrl;
-        this.schedule = schedule;
+        this.receiptImages = receiptImages != null ? receiptImages : new ArrayList<>();
     }
 
-    public void update(LocalDate transactionDate, FinanceType type, FinanceCategory category, String detail, Long amount, String receiptUrl, Schedule schedule) {
+    public void update(LocalDate transactionDate, FinanceType type, FinanceCategory category, String detail, Long amount, List<String> receiptImages) {
         this.transactionDate = transactionDate;
         this.type = type;
         this.category = category;
         this.detail = detail;
         this.amount = amount;
-        this.receiptUrl = receiptUrl;
-        this.schedule = schedule;
+        this.receiptImages = receiptImages;
     }
 }

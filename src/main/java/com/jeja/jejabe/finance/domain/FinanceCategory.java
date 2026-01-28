@@ -26,4 +26,8 @@ public class FinanceCategory {
         this.name = name;
         this.type = type;
     }
+
+    public void update(String name) {
+        this.name = name;
+    }
 }
