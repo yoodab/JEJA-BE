@@ -10,17 +10,19 @@ import java.time.LocalDate;
 public class AbsenceCareResponseDto {
     private Long careId;
     private Long memberId;
+    private String memberImageUrl;
     private String name;
     private String phone;
     private String status;
     private int absenceWeeks;
-    private int attendanceWeeks; // 재정착 시 사용
+    private int attendanceWeeks;
     private String managerName;
     private LocalDate startDate;
 
     public AbsenceCareResponseDto(AbsenceCare care, int attendanceWeeks) {
         this.careId = care.getId();
         this.memberId = care.getMember().getId();
+        this.memberImageUrl = care.getMember().getMemberImageUrl();
         this.name = care.getMember().getName();
         this.phone = care.getMember().getPhone();
         this.status = care.getStatus().name();
