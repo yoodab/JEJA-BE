@@ -44,9 +44,10 @@ public class AttendanceController {
     @PostMapping("/schedules/{scheduleId}/participation")
     public ResponseEntity<ApiResponseForm<Void>> applyForSchedule(
             @PathVariable Long scheduleId,
+            @RequestBody ParticipationRequestDto requestDto,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        attendanceService.applyForSchedule(scheduleId, userDetails);
+        attendanceService.applyForSchedule(scheduleId, requestDto,userDetails);
         return ResponseEntity.ok(ApiResponseForm.success("참석 신청이 완료되었습니다."));
     }
 
@@ -54,9 +55,10 @@ public class AttendanceController {
     @DeleteMapping("/schedules/{scheduleId}/participation")
     public ResponseEntity<ApiResponseForm<Void>> cancelParticipation(
             @PathVariable Long scheduleId,
+            @RequestBody ParticipationRequestDto requestDto,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        attendanceService.cancelApplication(scheduleId, userDetails);
+        attendanceService.cancelApplication(scheduleId,requestDto, userDetails);
         return ResponseEntity.ok(ApiResponseForm.success("참석 신청이 취소되었습니다."));
     }
 

@@ -59,13 +59,14 @@ public class AttendanceService {
 
         for (Member member : members) {
             // 이미 명단에 있거나 출석한 경우 건너뜀
-            if (attendanceRepository.existsByScheduleAndMember(schedule, member)) {
+            if (attendanceRepository.existsByScheduleAndMemberAndScheduleDate(schedule, member,requestDto.getTargetDate())) {
                 continue;
             }
 
             ScheduleAttendance registration = ScheduleAttendance.builder()
                     .schedule(schedule)
                     .member(member)
+                    .scheduleDate(requestDto.getTargetDate())
                     .status(AttendanceStatus.REGISTERED) // 상태: 등록됨(미출석)
                     .attendanceTime(null) // 시간 없음
                     .build();
@@ -78,7 +79,7 @@ public class AttendanceService {
         List<Member> members = memberRepository.findAllById(requestDto.getMemberIds());
 
         for (Member member : members) {
-            Optional<ScheduleAttendance> attendanceOpt = attendanceRepository.findByScheduleAndMember(schedule, member);
+            Optional<ScheduleAttendance> attendanceOpt = attendanceRepository.findByScheduleAndMemberAndScheduleDate(schedule, member,requestDto.getTargetDate());
 
             if (attendanceOpt.isPresent()) {
                 ScheduleAttendance attendance = attendanceOpt.get();
@@ -96,12 +97,16 @@ public class AttendanceService {
     }
 
     // --- [2] 사용자용: 참석 신청 (Self Apply) ---
-    public void applyForSchedule(Long scheduleId, UserDetailsImpl userDetails) {
+    public void applyForSchedule(Long scheduleId, ParticipationRequestDto requestDto,UserDetailsImpl userDetails) {
         Schedule schedule = findScheduleById(scheduleId);
         Member member = userDetails.getUser().getMember();
-
+        LocalDate targetDate = requestDto.getTargetDate();
+        if (targetDate == null) {
+            // 날짜가 없으면 예외 처리 (반복 일정일 수 있으므로 필수)
+            throw new GeneralException(CommonErrorCode.BAD_REQUEST);
+        }
         // 이미 명단에 있거나 출석했는지 확인
-        if (attendanceRepository.existsByScheduleAndMember(schedule, member)) {
+        if (attendanceRepository.existsByScheduleAndMemberAndScheduleDate(schedule, member, targetDate)) {
             throw new GeneralException(CommonErrorCode.ALREADY_REGISTERED);
         }
 
@@ -109,18 +114,22 @@ public class AttendanceService {
                 .schedule(schedule)
                 .member(member)
                 .status(AttendanceStatus.REGISTERED) // 상태: 신청됨(명단 등록)
-                // 시간, 위치 정보는 없음 (아직 출석 전이므로)
+                .scheduleDate(targetDate)
                 .build();
 
         attendanceRepository.save(application);
     }
 
     // --- [3] 사용자용: 참석 신청 취소 (Self Cancel) ---
-    public void cancelApplication(Long scheduleId, UserDetailsImpl userDetails) {
+    public void cancelApplication(Long scheduleId, ParticipationRequestDto requestDto, UserDetailsImpl userDetails) {
         Schedule schedule = findScheduleById(scheduleId);
         Member member = userDetails.getUser().getMember();
+        LocalDate targetDate = requestDto.getTargetDate();
+        if (targetDate == null) {
+            throw new GeneralException(CommonErrorCode.BAD_REQUEST);
+        }
 
-        ScheduleAttendance attendance = attendanceRepository.findByScheduleAndMember(schedule, member)
+        ScheduleAttendance attendance = attendanceRepository.findByScheduleAndMemberAndScheduleDate(schedule, member, targetDate)
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.NOT_REGISTERED));
 
         // 이미 출석 체크를 완료(PRESENT)한 경우 취소 불가 (관리자 문의 필요 등 정책에 따라 결정)

@@ -5,12 +5,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Getter
 @Setter
 @NoArgsConstructor
-public class AttendanceRemoveRequestDto {
+public class ParticipationRequestDto {
     private LocalDate targetDate;
-    private List<Long> memberIds;
 }
