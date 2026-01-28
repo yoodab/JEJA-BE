@@ -4,6 +4,7 @@ import com.jeja.jejabe.album.Album;
 import com.jeja.jejabe.album.AlbumRepository;
 import com.jeja.jejabe.album.PermissionType;
 import com.jeja.jejabe.attendance.AttendanceRepository;
+import com.jeja.jejabe.attendance.AttendanceStatus;
 import com.jeja.jejabe.attendance.ScheduleAttendance;
 import com.jeja.jejabe.attendance.dto.AttendanceRecordDto;
 import com.jeja.jejabe.auth.UserDetailsImpl;
@@ -31,22 +32,32 @@ import java.util.stream.Collectors;
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
-    private final WorshipCategoryRepository worshipCategoryRepository;
-    // [New] 추가된 의존성
     private final AlbumRepository albumRepository;
     private final AttendanceRepository attendanceRepository;
 
     // --- 1. 조회 (Read) ---
     @Transactional(readOnly = true)
-    public List<ScheduleResponseDto> getSchedulesByMonth(int year, int month, UserDetailsImpl userDetails) {
-        YearMonth ym = YearMonth.of(year, month);
-        LocalDateTime start = ym.atDay(1).atStartOfDay();
-        LocalDateTime end = ym.atEndOfMonth().atTime(23, 59, 59);
+    public List<ScheduleResponseDto> getSchedules(int year, int month, Integer day, UserDetailsImpl userDetails) {
+        LocalDateTime searchStart;
+        LocalDateTime searchEnd;
 
-        List<Schedule> candidates = scheduleRepository.findCandidatesForMonth(start, end);
+        // 날짜(day)가 있으면 해당 일 하루만 조회, 없으면 월 전체 조회
+        if (day != null) {
+            LocalDate date = LocalDate.of(year, month, day);
+            searchStart = date.atStartOfDay();
+            searchEnd = date.atTime(23, 59, 59);
+        } else {
+            YearMonth ym = YearMonth.of(year, month);
+            searchStart = ym.atDay(1).atStartOfDay();
+            searchEnd = ym.atEndOfMonth().atTime(23, 59, 59);
+        }
 
+        // Repository는 범위 내에 걸치는 원본 일정들을 가져옴
+        List<Schedule> candidates = scheduleRepository.findCandidatesForMonth(searchStart, searchEnd);
+
+        // Calculator에 '조회 범위'를 직접 전달하도록 수정
         List<ScheduleResponseDto> expandedSchedules = candidates.stream()
-                .flatMap(s -> RecurrenceCalculator.generateSchedules(s, year, month).stream())
+                .flatMap(s -> RecurrenceCalculator.generateSchedules(s, searchStart, searchEnd).stream())
                 .collect(Collectors.toList());
 
         return filterBySharingScope(expandedSchedules, userDetails);
@@ -67,12 +78,23 @@ public class ScheduleService {
         // 2. 출석 명단 조회
         List<ScheduleAttendance> attendanceEntities = attendanceRepository.findAllBySchedule(schedule);
         List<AttendanceRecordDto> attendees = attendanceEntities.stream()
-                .map(att -> new AttendanceRecordDto(
-                        att.getMember().getId(),
-                        att.getMember().getName(),
-                        true,
-                        att.getAttendanceTime().toLocalTime().toString()
-                ))
+                .map(att -> {
+                    // (1) 출석 시간 처리: null이면 "-" 또는 null로 반환
+                    String timeStr = (att.getAttendanceTime() != null)
+                            ? att.getAttendanceTime().toLocalTime().toString()
+                            : "-";
+
+                    // (2) 출석 여부 처리
+                    boolean isAttended = att.getStatus() == AttendanceStatus.PRESENT;
+
+                    return new AttendanceRecordDto(
+                            att.getMember().getId(),
+                            att.getMember().getName(),
+                            att.getMember().getPhone(),
+                            isAttended, // 기존 true -> 실제 상태로 변경 권장
+                            timeStr     // null 체크 적용됨
+                    );
+                })
                 .collect(Collectors.toList());
 
         return new ScheduleDetailResponseDto(schedule, linkedAlbumId, attendees);
@@ -80,7 +102,6 @@ public class ScheduleService {
 
     // --- 2. 등록 (Create) ---
     public Long createSchedule(ScheduleCreateRequestDto requestDto) {
-        WorshipCategory category = resolveCategory(requestDto.getWorshipCategoryId());
 
         Schedule schedule = Schedule.builder()
                 .title(requestDto.getTitle())
@@ -92,7 +113,7 @@ public class ScheduleService {
                 .sharingScope(requestDto.getSharingScope())
                 .recurrenceRule(requestDto.getRecurrenceRule())
                 .recurrenceEndDate(requestDto.getRecurrenceEndDate())
-                .worshipCategory(category)
+                .worshipCategory(requestDto.getWorshipCategory())
                 .build();
 
         Schedule savedSchedule = scheduleRepository.save(schedule);
@@ -123,8 +144,7 @@ public class ScheduleService {
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.SCHEDULE_NOT_FOUND));
 
         if (schedule.getRecurrenceRule() == RecurrenceRule.NONE || dto.getUpdateType() == UpdateType.ALL) {
-            WorshipCategory category = resolveCategory(dto.getWorshipCategoryId());
-            schedule.update(dto, category);
+            schedule.update(dto);
             return;
         }
 
@@ -173,11 +193,6 @@ public class ScheduleService {
     }
 
     // --- Helper Methods ---
-    private WorshipCategory resolveCategory(Long id) {
-        if (id == null) return null;
-        return worshipCategoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid WorshipCategory ID"));
-    }
 
     private List<ScheduleResponseDto> filterBySharingScope(List<ScheduleResponseDto> list, UserDetailsImpl user) {
         if (user == null) {

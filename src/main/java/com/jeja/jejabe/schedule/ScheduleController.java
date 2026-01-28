@@ -19,15 +19,17 @@ import java.util.List;
 public class ScheduleController {
 
     private final ScheduleService scheduleService;
-    // [New] Guard 주입
-    private final ScheduleGuard scheduleGuard;
 
     @GetMapping
     public ResponseEntity<ApiResponseForm<List<ScheduleResponseDto>>> getSchedules(
             @RequestParam int year,
             @RequestParam int month,
+            @RequestParam(required = false) Integer day,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        List<ScheduleResponseDto> result = scheduleService.getSchedulesByMonth(year, month, userDetails);
+
+        // day를 포함하여 Service 호출
+        List<ScheduleResponseDto> result = scheduleService.getSchedules(year, month, day, userDetails);
+
         return ResponseEntity.ok(ApiResponseForm.success(result));
     }
 

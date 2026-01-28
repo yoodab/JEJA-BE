@@ -2,6 +2,7 @@ package com.jeja.jejabe.schedule;
 
 import com.jeja.jejabe.schedule.domain.Schedule;
 import com.jeja.jejabe.schedule.domain.ScheduleType;
+import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,11 +28,19 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
     List<Schedule> findTop10ByTypeOrderByStartDateDesc(ScheduleType scheduleType);
 
+    // [New] 기간 내 특정 카테고리 일정 조회
+    List<Schedule> findAllByWorshipCategoryAndStartDateBetween(
+            WorshipCategory category, LocalDateTime start, LocalDateTime end);
+
+    // [New] 특정 날짜 이전의 특정 카테고리 일정 조회 (최신순 정렬) - 연속 결석 계산용
+    List<Schedule> findAllByWorshipCategoryAndStartDateBeforeOrderByStartDateDesc(
+            WorshipCategory category, LocalDateTime date);
+
+
     // [NEW] 최적화된 월별 조회 쿼리
     // 1. 반복 없음(NONE): 조회 기간 내에 포함되는지 확인
     // 2. 반복 있음(!= NONE): 시작일이 조회 종료일 이전이고, (종료일이 없거나 조회 시작일 이후인 경우)
     @Query("SELECT s FROM Schedule s " +
-            "LEFT JOIN FETCH s.worshipCategory " +
             "WHERE " +
             "(s.recurrenceRule = 'NONE' AND s.startDate < :endOfMonth AND s.endDate > :startOfMonth) " +
             "OR " +

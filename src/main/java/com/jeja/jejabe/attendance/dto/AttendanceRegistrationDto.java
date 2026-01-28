@@ -1,6 +1,7 @@
 package com.jeja.jejabe.attendance.dto;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
@@ -8,7 +9,8 @@ import java.util.List;
 
 @Getter
 @Setter
-public class AdminAttendanceRequestDto {
+@NoArgsConstructor
+public class AttendanceRegistrationDto {
     private LocalDate targetDate;
-    private List<Long> attendedMemberIds;
+    private List<Long> memberIds;
 }

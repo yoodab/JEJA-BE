@@ -13,16 +13,12 @@ import java.util.List;
 
 public class RecurrenceCalculator {
 
-    public static List<ScheduleResponseDto> generateSchedules(Schedule schedule, int year, int month) {
+    public static List<ScheduleResponseDto> generateSchedules(Schedule schedule, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
         List<ScheduleResponseDto> result = new ArrayList<>();
-
-        YearMonth targetMonth = YearMonth.of(year, month);
-        LocalDateTime monthStart = targetMonth.atDay(1).atStartOfDay();
-        LocalDateTime monthEnd = targetMonth.atEndOfMonth().atTime(23, 59, 59);
 
         // 반복 없음 (단순 날짜 체크)
         if (schedule.getRecurrenceRule() == RecurrenceRule.NONE) {
-            if (isOverlapping(schedule.getStartDate(), schedule.getEndDate(), monthStart, monthEnd)) {
+            if (isOverlapping(schedule.getStartDate(), schedule.getEndDate(), rangeStart, rangeEnd)) {
                 result.add(new ScheduleResponseDto(schedule));
             }
             return result;
@@ -34,21 +30,22 @@ public class RecurrenceCalculator {
         long durationSeconds = ChronoUnit.SECONDS.between(currentStart, currentEnd);
         LocalDate recurEnd = schedule.getRecurrenceEndDate();
 
-        while (currentStart.isBefore(monthEnd)) {
+
+        while (currentStart.isBefore(rangeEnd)) {
             // 1. 반복 종료일 체크
             if (recurEnd != null && currentStart.toLocalDate().isAfter(recurEnd)) {
                 break;
             }
 
-            // 2. [NEW] 예외 날짜 체크 (THIS_ONLY로 삭제/수정된 날짜는 건너뜀)
+            // 2. 예외 날짜 체크 (THIS_ONLY로 삭제/수정된 날짜는 건너뜀)
             if (schedule.getExceptionDates().contains(currentStart.toLocalDate())) {
                 currentStart = getNextOccurrence(currentStart, schedule.getRecurrenceRule());
                 continue;
             }
 
-            // 3. 이번 달 범위 내인지 확인
+            // 3. 현재 발생한 일정이 조회 범위(rangeStart ~ rangeEnd) 내인지 확인
             LocalDateTime calculatedEnd = currentStart.plusSeconds(durationSeconds);
-            if (isOverlapping(currentStart, calculatedEnd, monthStart, monthEnd)) {
+            if (isOverlapping(currentStart, calculatedEnd, rangeStart, rangeEnd)) {
                 result.add(new ScheduleResponseDto(schedule, currentStart, calculatedEnd));
             }
 
