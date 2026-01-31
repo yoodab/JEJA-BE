@@ -33,6 +33,11 @@ public class CommentService {
         return comment.getCommentId();
     }
 
+    public void updateComment(Long commentId, String content) {
+        Comment comment = commentRepository.findById(commentId).orElseThrow();
+        comment.update(content);
+    }
+
     public void deleteComment(Long commentId) {
         Comment comment = commentRepository.findById(commentId).orElseThrow();
         if (comment.getChildren().size() > 0) {

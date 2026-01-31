@@ -1,5 +1,6 @@
 package com.jeja.jejabe.board.domain;
 
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import com.jeja.jejabe.member.domain.Member;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -11,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Table(uniqueConstraints = {
         @UniqueConstraint(columnNames = {"member_id", "post_id"}) // 한 유저는 한 게시글에 한 번만 좋아요 가능
 })
-public class PostLike {
+public class PostLike extends BaseTimeEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

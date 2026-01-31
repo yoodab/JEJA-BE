@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class BoardService {
     private final BoardRepository boardRepository;
     private final ClubRepository clubRepository;
@@ -95,5 +95,37 @@ public class BoardService {
             return (UserDetailsImpl) auth.getPrincipal();
         }
         return null;
+    }
+
+    /**
+     * [추가] 일반 게시판 목록 조회 (메인 화면용)
+     * - 공지사항(notice), 자유게시판 등 클럽에 속하지 않은 게시판 반환
+     */
+    public List<BoardResponseDto> getGeneralBoards() {
+        // Club이 null인 게시판만 가져옴 (순서: OrderIndex)
+        List<Board> boards = boardRepository.findAllByClubIsNullOrderByOrderIndexAsc();
+
+        return boards.stream()
+                // 1. ADMIN 전용 게시판 제외
+                .filter(board -> board.getAccessType() != BoardAccessType.ADMIN)
+                // 2. [추가] 공지사항 게시판 제외 (boardKey가 "notice"인 경우)
+                .filter(board -> !board.getBoardKey().equals("notice"))
+                .map(BoardResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * [추가] 특정 클럽의 게시판 목록 조회
+     * - 해당 클럽에 들어갔을 때 보여줄 탭(게시판) 목록
+     */
+    public List<BoardResponseDto> getClubBoards(Long clubId) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 클럽입니다."));
+
+        List<Board> boards = boardRepository.findAllByClubOrderByOrderIndexAsc(club);
+
+        return boards.stream()
+                .map(BoardResponseDto::new)
+                .collect(Collectors.toList());
     }
 }

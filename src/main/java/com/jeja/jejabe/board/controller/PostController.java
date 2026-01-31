@@ -21,8 +21,18 @@ public class PostController {
 
     @GetMapping("/boards/{boardKey}/posts")
     @PreAuthorize("@boardGuard.canReadBoard(principal, #boardKey)")
-    public ResponseEntity<?> getPosts(@PathVariable String boardKey, Pageable pageable) {
-        return ResponseEntity.ok(ApiResponseForm.success(postService.getPostsByBoard(boardKey, pageable), "목록 조회 성공"));
+    public ResponseEntity<?> getPosts(@PathVariable String boardKey,
+                                      @RequestParam(required = false) String keyword,
+                                      Pageable pageable) {
+        return ResponseEntity.ok(ApiResponseForm.success(postService.getPostsByBoard(boardKey, keyword, pageable), "목록 조회 성공"));
+    }
+
+    @GetMapping("/boards/{boardId}")
+    @PreAuthorize("@boardGuard.canReadBoard(principal, #boardKey)")
+    public ResponseEntity<?> getPostsbyBoardId(@PathVariable Long boardId,
+                                      @RequestParam(required = false) String keyword,
+                                      Pageable pageable) {
+        return ResponseEntity.ok(ApiResponseForm.success(postService.getPostsByBoard(boardId, keyword, pageable), "목록 조회 성공"));
     }
 
     @PostMapping("/boards/{boardKey}/posts")
@@ -33,8 +43,15 @@ public class PostController {
 
     @GetMapping("/posts/{postId}")
     @PreAuthorize("@boardGuard.canReadPost(principal, #postId)")
-    public ResponseEntity<?> getPost(@PathVariable Long postId) {
-        return ResponseEntity.ok(ApiResponseForm.success(postService.getPostById(postId), "상세 조회 성공"));
+    public ResponseEntity<?> getPost(@PathVariable Long postId,
+                                     @AuthenticationPrincipal UserDetailsImpl user) {
+
+        Long memberId = (user != null) ? user.getUser().getMember().getId() : null;
+
+        return ResponseEntity.ok(ApiResponseForm.success(
+                postService.getPostById(postId, memberId),
+                "상세 조회 성공"
+        ));
     }
 
     @PatchMapping("/posts/{postId}")
@@ -49,5 +66,12 @@ public class PostController {
     public ResponseEntity<?> deletePost(@PathVariable Long postId) {
         postService.deletePost(postId);
         return ResponseEntity.ok(ApiResponseForm.success(null, "삭제 완료"));
+    }
+
+    @PatchMapping("/posts/{postId}/notice")
+    @PreAuthorize("@boardGuard.canManagePost(principal, #postId)")
+    public ResponseEntity<?> togglePostNotice(@PathVariable Long postId) {
+        postService.togglePostNotice(postId);
+        return ResponseEntity.ok(ApiResponseForm.success(null, "상단 고정 상태가 변경되었습니다."));
     }
 }

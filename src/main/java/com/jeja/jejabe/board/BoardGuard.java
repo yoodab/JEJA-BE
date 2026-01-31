@@ -3,6 +3,7 @@ package com.jeja.jejabe.board;
 import com.jeja.jejabe.auth.UserDetailsImpl;
 import com.jeja.jejabe.auth.UserRole;
 import com.jeja.jejabe.board.domain.Board;
+import com.jeja.jejabe.board.domain.BoardAccessType;
 import com.jeja.jejabe.board.domain.Comment;
 import com.jeja.jejabe.board.domain.Post;
 import com.jeja.jejabe.board.repository.BoardRepository;
@@ -84,11 +85,12 @@ public class BoardGuard {
 
     // 댓글 삭제
     @Transactional(readOnly = true)
-    public boolean canDeleteComment(UserDetailsImpl userDetails, Long commentId) {
+    public boolean canEditDeleteComment(UserDetailsImpl userDetails, Long commentId) {
         if (userDetails == null) return false;
         if (isAdmin(userDetails)) return true;
         Comment comment = commentRepository.findById(commentId).orElse(null);
         if (comment == null) return true;
+        // 작성자 본인인지 확인
         return comment.getAuthor().getId().equals(getMember(userDetails).getId());
     }
 
@@ -104,5 +106,29 @@ public class BoardGuard {
         boolean isMember = clubMemberRepository.existsByClubAndMember(club, member);
         boolean isLeader = club.getLeader() != null && club.getLeader().getId().equals(member.getId());
         return isMember || isLeader;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canManagePost(UserDetailsImpl userDetails, Long postId) {
+        if (userDetails == null) return false;
+        if (isAdmin(userDetails)) return true; // 시스템 관리자는 프리패스
+
+        Post post = postRepository.findById(postId).orElse(null);
+        if (post == null) return false;
+
+        Member member = getMember(userDetails);
+        Board board = post.getBoard();
+
+        // 클럽 게시판일 경우, 클럽의 리더인지 확인
+        if (board.getAccessType() == BoardAccessType.CLUB && board.getClub() != null) {
+            // Club 엔티티에 getLeader()가 있다고 가정
+            return board.getClub().getLeader().getId().equals(member.getId());
+        }
+
+        // 일반적인 경우 작성자는 공지 권한이 없을 수도 있음 (정책에 따라 결정)
+        // 여기서는 "작성자도 본인 글은 공지로 올릴 수 있다"고 가정한다면 아래 줄 추가
+        // return post.getAuthor().getId().equals(member.getId());
+
+        return false; // 그 외에는 권한 없음
     }
 }

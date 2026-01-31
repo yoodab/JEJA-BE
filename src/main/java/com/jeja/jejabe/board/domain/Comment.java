@@ -39,12 +39,18 @@ public class Comment extends BaseTimeEntity {
     private int likeCount = 0;
     private boolean isDeleted = false;
 
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentLike> likes = new ArrayList<>();
+
     @Builder
     public Comment(String content, Post post, Member author, Comment parent) {
         this.content = content;
         this.post = post;
         this.author = author;
         this.parent = parent;
+    }
+    public void update(String content) {
+        this.content = content;
     }
 
     public void delete() { this.isDeleted = true; }
