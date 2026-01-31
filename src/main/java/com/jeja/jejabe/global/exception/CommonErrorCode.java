@@ -25,7 +25,10 @@ public enum CommonErrorCode implements ErrorCode {
     DUPLICATE_LOGIN_ID("A003", "이미 사용 중인 아이디입니다.", HttpStatus.CONFLICT),
     MEMBER_ALREADY_HAS_ACCOUNT("A004", "이미 계정이 등록된 멤버입니다.", HttpStatus.CONFLICT),
     USER_NOT_FOUND("A005", "사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-
+    DUPLICATE_EMAIL("A006", "이미 가입된 이메일입니다.", HttpStatus.CONFLICT),
+    INVALID_AUTH_CODE("A007", "인증번호가 일치하지 않거나 만료되었습니다.", HttpStatus.BAD_REQUEST),
+    EMAIL_NOT_VERIFIED("A008", "이메일 인증이 완료되지 않았습니다.", HttpStatus.BAD_REQUEST),
+    EMAIL_SEND_FAILED("A009", "이메일 전송 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // =================================================================
     // 멤버(Member) 관리 관련 에러 - M0xx
