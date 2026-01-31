@@ -71,8 +71,17 @@ public class SecurityConfig {
                         .requestMatchers(SWAGGER_URL_PATTERNS).permitAll()
 
                         // 2. 인증/가입 관련
-                        .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/signup", "/api/auth/login","/api/users/find-password").permitAll()
 
+                        // 비밀번호 찾기
+                        .requestMatchers(
+                                "/api/auth/signup/send-verification",
+                                "/api/auth/signup/verify",
+                                "/api/auth/reset-password",
+                                "/api/auth/send-verification-code",
+                                "/api/auth/verify-code",
+                                "/api/auth/reset-password"
+                        ).permitAll()
                         // 3. 출석 체크 (비로그인/공용 태블릿 사용 가능성 고려)
                         .requestMatchers("/api/schedule/*/check-in").permitAll()
 
@@ -103,7 +112,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // 프론트엔드 주소 허용
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173","https://jeja.shop","http://60.196.100.101"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173","https://jeja.shop","http://60.196.100.101","http://122.37.227.143:5173"));
 
         // 허용할 HTTP 메서드
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
