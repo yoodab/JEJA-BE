@@ -12,8 +12,6 @@ public class ClubDetailResponseDto {
     private Long id;
     private String name;
     private String description;
-    private String meetingTime;
-    private String meetingPlace;
     private String type;
     private Long leaderId;
     private String leaderName;
@@ -23,8 +21,6 @@ public class ClubDetailResponseDto {
         this.id = club.getId();
         this.name = club.getName();
         this.description = club.getDescription();
-        this.meetingTime = club.getMeetingTime();
-        this.meetingPlace = club.getMeetingPlace();
         this.type = club.getType().name();
         if (club.getLeader() != null) {
             this.leaderId = club.getLeader().getId();

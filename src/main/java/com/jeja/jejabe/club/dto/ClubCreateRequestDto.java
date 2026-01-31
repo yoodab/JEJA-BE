@@ -7,8 +7,6 @@ import lombok.Data;
 public class ClubCreateRequestDto {
     private String name;
     private String description;
-    private String meetingTime;
-    private String meetingPlace;
     private ClubType type;
     private Long leaderMemberId;
 }
