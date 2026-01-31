@@ -87,7 +87,8 @@ public class SecurityConfig {
 
 
                         .requestMatchers("/api/schedule/checkable").permitAll()
-
+                        .requestMatchers("/api/attendance/guest").permitAll()
+                        .requestMatchers("/api/newcomers/public").permitAll() // 새가족 온라인 등록
                         // 대시보드 일정 조회
                         .requestMatchers("/api/schedules/upcoming").permitAll()
                         .requestMatchers("/api/albums").permitAll()
