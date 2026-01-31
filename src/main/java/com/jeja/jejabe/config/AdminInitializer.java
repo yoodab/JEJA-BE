@@ -93,7 +93,6 @@ public class AdminInitializer implements CommandLineRunner {
                     .description(desc)
                     .type(type)
                     .leader(leader)
-                    .meetingPlace("청년부실")
                     .build();
             clubRepository.save(club);
             System.out.println(">>> [INIT] 시스템 팀 생성 완료: " + name);
