@@ -2,6 +2,7 @@ package com.jeja.jejabe.member.domain;
 
 import com.jeja.jejabe.auth.User;
 import com.jeja.jejabe.cell.MemberCellHistory;
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import com.jeja.jejabe.member.dto.MemberUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,7 +17,7 @@ import java.util.Set;
 @Table(name = "member")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Member {
+public class Member extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

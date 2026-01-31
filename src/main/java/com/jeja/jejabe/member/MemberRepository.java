@@ -24,7 +24,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     List<Member> findAllByMemberStatus(MemberStatus status);
 
     Optional<Member> findByPhone(String phone);
-
+    Optional<Member> findByName(String name);
     List<Member> findAllByMemberStatusNotIn(List<MemberStatus> inactive);
 
     // 미배정 인원 조회: 현재 활성화된 CellHistory가 없는 멤버

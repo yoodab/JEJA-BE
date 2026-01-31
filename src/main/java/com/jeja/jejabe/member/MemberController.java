@@ -53,7 +53,7 @@ public class MemberController {
         return ResponseEntity.ok(ApiResponseForm.success(newMemberId, "새 멤버가 성공적으로 등록되었습니다."));
     }
 
-    @PatchMapping("/{memberId}")
+    @PutMapping("/{memberId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR','EXECUTIVE')")
     public ResponseEntity<ApiResponseForm<Void>> updateMember(@PathVariable Long memberId, @RequestBody MemberUpdateRequestDto requestDto) {
         memberService.updateMember(memberId, requestDto);

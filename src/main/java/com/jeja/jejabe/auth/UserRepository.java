@@ -18,4 +18,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByLoginId(@Param("loginId") String loginId);
 
     long countByStatus(UserStatus status);
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
 }

@@ -1,0 +1,9 @@
+package com.jeja.jejabe.auth.dto;
+
+import lombok.Data;
+
+@Data
+public class EmailVerificationDto {
+    private String email;
+    private String authCode;
+}
