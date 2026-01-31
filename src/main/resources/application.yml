@@ -1,4 +1,8 @@
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost} # .env 없으면 localhost 기본값
+      port: ${REDIS_PORT:6379}
   application:
     name: JEJA-BE
   datasource:
@@ -10,6 +14,21 @@ spring:
     multipart:
       max-file-size: 5GB
       max-request-size: 5GB
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME}      # .env 파일의 GMAIL_USERNAME 값을 가져옴
+    password: ${GMAIL_APP_PASSWORD}  # .env 파일의 GMAIL_APP_PASSWORD 값을 가져옴
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
   jpa:
     hibernate:
