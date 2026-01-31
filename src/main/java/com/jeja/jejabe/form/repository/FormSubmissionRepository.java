@@ -18,6 +18,7 @@ public interface FormSubmissionRepository extends JpaRepository<FormSubmission, 
     boolean existsBySubmitterAndTargetSundayDateAndTargetCellId(Member submitter, LocalDate targetSundayDate, Long cellId);
     // 내가 낸 것 목록
     List<FormSubmission> findAllBySubmitterOrderBySubmitDateDesc(Member submitter);
+    List<FormSubmission> findAllByTemplateOrderByCreatedAtDesc(FormTemplate template);
     // 특정 폼 제출 여부 확인용
     Optional<FormSubmission> findFirstByTemplateAndSubmitterOrderBySubmitDateDesc(FormTemplate template, Member submitter);
 }

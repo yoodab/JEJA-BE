@@ -1,21 +1,24 @@
 package com.jeja.jejabe.form.domain;
 
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class FormQuestion {
+public class FormQuestion extends BaseTimeEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_id")
-    private FormTemplate template;
+    @JoinColumn(name = "section_id")
+    private FormSection section;
 
     @Column(nullable = false)
     private String label;
@@ -25,24 +28,38 @@ public class FormQuestion {
     @Enumerated(EnumType.STRING)
     private QuestionType inputType;
 
+    @Enumerated(EnumType.STRING)
+    private AttendanceSyncType syncType = AttendanceSyncType.NONE;
+
     @Column(columnDefinition = "TEXT")
-    private String options;
+    private String optionsJson; // 선택지 + 분기 로직 JSON 저장
+
+    @Column(nullable = false)
+    private boolean isActive = true;
 
     private boolean isMemberSpecific;
+    private WorshipCategory linkedWorshipCategory;
+    private Long linkedScheduleId;
+    private LocalDate linkedScheduleDate;
 
-
-    private WorshipCategory linkedWorshipCategory; // <-- 추가: 어떤 예배 스케줄과 연동할지 ID 저장
-
+    public void disable() {
+        this.isActive = false;
+    }
 
     @Builder
     public FormQuestion(String label, int orderIndex, boolean required, QuestionType inputType,
-                        String options, boolean isMemberSpecific, WorshipCategory linkedWorshipCategory) {
+                        AttendanceSyncType syncType, String optionsJson, Long linkedScheduleId,
+                        boolean isMemberSpecific, WorshipCategory linkedWorshipCategory,LocalDate linkedScheduleDate) {
         this.label = label;
         this.orderIndex = orderIndex;
         this.required = required;
         this.inputType = inputType;
-        this.options = options;
+        this.syncType = syncType != null ? syncType : AttendanceSyncType.NONE;
+        this.optionsJson = optionsJson;
         this.isMemberSpecific = isMemberSpecific;
         this.linkedWorshipCategory = linkedWorshipCategory;
+        this.linkedScheduleId = linkedScheduleId;
+        this.linkedScheduleDate = linkedScheduleDate;
     }
+
 }
