@@ -61,4 +61,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
             @Param("excluded") List<MemberStatus> excluded,
             Pageable pageable
     );
+
+    List<Member> findAllByName(String name);
 }

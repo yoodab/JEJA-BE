@@ -17,6 +17,7 @@ import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import com.jeja.jejabe.schedule.dto.ScheduleResponseDto;
 import com.jeja.jejabe.attendance.dto.AttendanceStatisticsResponseDto;
 import com.jeja.jejabe.attendance.dto.AttendanceStatisticsResponseDto.ScheduleStatDto;
+import com.jeja.jejabe.schedule.util.RecurrenceCalculator;
 import com.jeja.jejabe.user.dto.MyAttendanceStatResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +52,6 @@ public class AttendanceService {
     @Value("${church.attendance.ip-limit-per-schedule}")
     private int ipLimitPerSchedule;
 
-
     // [New] 1. 출석부 명단 생성 (미리 인원 등록)
     public void registerAttendees(Long scheduleId, AttendanceRegistrationDto requestDto) {
         Schedule schedule = findScheduleById(scheduleId);
@@ -59,7 +59,8 @@ public class AttendanceService {
 
         for (Member member : members) {
             // 이미 명단에 있거나 출석한 경우 건너뜀
-            if (attendanceRepository.existsByScheduleAndMemberAndScheduleDate(schedule, member,requestDto.getTargetDate())) {
+            if (attendanceRepository.existsByScheduleAndMemberAndScheduleDate(schedule, member,
+                    requestDto.getTargetDate())) {
                 continue;
             }
 
@@ -79,7 +80,8 @@ public class AttendanceService {
         List<Member> members = memberRepository.findAllById(requestDto.getMemberIds());
 
         for (Member member : members) {
-            Optional<ScheduleAttendance> attendanceOpt = attendanceRepository.findByScheduleAndMemberAndScheduleDate(schedule, member,requestDto.getTargetDate());
+            Optional<ScheduleAttendance> attendanceOpt = attendanceRepository
+                    .findByScheduleAndMemberAndScheduleDate(schedule, member, requestDto.getTargetDate());
 
             if (attendanceOpt.isPresent()) {
                 ScheduleAttendance attendance = attendanceOpt.get();
@@ -97,7 +99,7 @@ public class AttendanceService {
     }
 
     // --- [2] 사용자용: 참석 신청 (Self Apply) ---
-    public void applyForSchedule(Long scheduleId, ParticipationRequestDto requestDto,UserDetailsImpl userDetails) {
+    public void applyForSchedule(Long scheduleId, ParticipationRequestDto requestDto, UserDetailsImpl userDetails) {
         Schedule schedule = findScheduleById(scheduleId);
         Member member = userDetails.getUser().getMember();
         LocalDate targetDate = requestDto.getTargetDate();
@@ -129,7 +131,8 @@ public class AttendanceService {
             throw new GeneralException(CommonErrorCode.BAD_REQUEST);
         }
 
-        ScheduleAttendance attendance = attendanceRepository.findByScheduleAndMemberAndScheduleDate(schedule, member, targetDate)
+        ScheduleAttendance attendance = attendanceRepository
+                .findByScheduleAndMemberAndScheduleDate(schedule, member, targetDate)
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.NOT_REGISTERED));
 
         // 이미 출석 체크를 완료(PRESENT)한 경우 취소 불가 (관리자 문의 필요 등 정책에 따라 결정)
@@ -144,13 +147,13 @@ public class AttendanceService {
     public void checkInByAdmin(Long scheduleId, AdminAttendanceRequestDto requestDto) {
         Schedule schedule = findScheduleById(scheduleId);
 
-
         LocalDate targetDate = requestDto.getTargetDate();
-        if (targetDate == null) targetDate = LocalDate.now();
+        if (targetDate == null)
+            targetDate = LocalDate.now();
 
         // 1. 해당 일정+날짜의 기존 기록 조회
-        List<ScheduleAttendance> existingRecords = attendanceRepository.findAllByScheduleAndScheduleDate(schedule, targetDate);
-
+        List<ScheduleAttendance> existingRecords = attendanceRepository.findAllByScheduleAndScheduleDate(schedule,
+                targetDate);
 
         // 1. 요청된 멤버 ID 중복 제거 (혹시 모를 에러 방지)
         Set<Long> requestMemberIds = new HashSet<>(requestDto.getAttendedMemberIds());
@@ -206,29 +209,55 @@ public class AttendanceService {
         }
     }
 
-    // 출석 가능 일정 목록 조회
+    // 출석 가능 일정 목록 조회 (20분 전후 필터링 추가)
     @Transactional(readOnly = true)
     public List<ScheduleResponseDto> getCheckableSchedules() {
+        LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
-        List<Schedule> todaySchedules = scheduleRepository.findAllByStartDateBetween(startOfDay, endOfDay);
-        return todaySchedules.stream().map(ScheduleResponseDto::new).collect(Collectors.toList());
 
+        // 1. 후보 일정 조회 (반복 일정 포함)
+        List<Schedule> candidates = scheduleRepository.findCandidatesForMonth(startOfDay, endOfDay);
 
+        // 2. 반복 규칙 적용하여 오늘 날짜의 일정 인스턴스 생성 및 시간 필터링
+        return candidates.stream()
+                .flatMap(s -> RecurrenceCalculator.generateSchedules(s, startOfDay, endOfDay).stream())
+                .filter(scheduleDto -> {
+                    LocalDateTime scheduleStart = scheduleDto.getStartDate();
+                    LocalDateTime windowStart = scheduleStart.minusMinutes(20);
+                    LocalDateTime windowEnd = scheduleStart.plusMinutes(20);
+                    return now.isAfter(windowStart) && now.isBefore(windowEnd);
+                })
+                .collect(Collectors.toList());
     }
 
     // [Modified] 2. 사용자 직접 출석 (기존 로직 수정)
-    public void checkIn(Long scheduleId, CheckInRequestDto dto, HttpServletRequest request, UserDetailsImpl userDetails) {
+    public void checkIn(Long scheduleId, CheckInRequestDto dto, HttpServletRequest request,
+            UserDetailsImpl userDetails) {
         Schedule schedule = findScheduleById(scheduleId);
 
-        LocalDate targetDate = LocalDate.now();
+        // 반복 일정 등을 고려하여 실제 출석하려는 스케줄의 시작 시간을 찾아야 함
+        // 여기서는 간단히 오늘 날짜의 해당 스케줄 인스턴스를 찾는다고 가정
+        // 하지만 schedule 객체는 원본 스케줄 정보임.
+        // 따라서 RecurrenceCalculator를 통해 오늘 날짜의 인스턴스를 생성해서 시간을 확인해야 정확함.
 
-        // (옵션) 만약 반복 일정이 아닌데 오늘이 스케줄 날짜와 다르면 에러 처리 필요할 수 있음
-        if (schedule.getRecurrenceRule() == RecurrenceRule.NONE && !schedule.getStartDate().toLocalDate().isEqual(targetDate)) {
-            // 단순히 날짜가 다르면 에러 or 그냥 오늘 날짜로 기록 (정책 결정 필요)
-            targetDate = schedule.getStartDate().toLocalDate();
-        }
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
+        // 오늘의 해당 스케줄 인스턴스 찾기
+        ScheduleResponseDto targetInstance = RecurrenceCalculator.generateSchedules(schedule, startOfDay, endOfDay)
+                .stream()
+                .filter(s -> {
+                    LocalDateTime sTime = s.getStartDate();
+                    LocalDateTime wStart = sTime.minusMinutes(20);
+                    LocalDateTime wEnd = sTime.plusMinutes(20);
+                    return now.isAfter(wStart) && now.isBefore(wEnd);
+                })
+                .findFirst()
+                .orElseThrow(() -> new GeneralException(CommonErrorCode.ATTENDANCE_TIME_WINDOW_EXPIRED));
+
+        LocalDate targetDate = targetInstance.getStartDate().toLocalDate();
 
         String clientIp = getClientIp(request);
 
@@ -256,7 +285,8 @@ public class AttendanceService {
                     .orElseThrow(() -> new GeneralException(CommonErrorCode.MEMBER_NOT_FOUND_FOR_CHECK_IN));
         }
 
-        Optional<ScheduleAttendance> existingRecord = attendanceRepository.findByScheduleAndMemberAndScheduleDate(schedule, member, targetDate);
+        Optional<ScheduleAttendance> existingRecord = attendanceRepository
+                .findByScheduleAndMemberAndScheduleDate(schedule, member, targetDate);
         if (existingRecord.isPresent()) {
             ScheduleAttendance attendance = existingRecord.get();
             // 이미 출석완료(PRESENT) 상태라면 에러
@@ -270,8 +300,7 @@ public class AttendanceService {
                     dto.getLatitude(),
                     dto.getLongitude(),
                     clientIp,
-                    AttendanceSource.GPS
-            );
+                    AttendanceSource.GPS);
         } else {
             // 명단에 없음(Walk-in) -> 새로 생성 (현장 즉석 참여)
             ScheduleAttendance newAttendance = ScheduleAttendance.builder()
@@ -335,8 +364,7 @@ public class AttendanceService {
                         record.getMember().getName(),
                         record.getMember().getPhone(),
                         record.getStatus() == AttendanceStatus.PRESENT,
-                        record.getAttendanceTime() != null ? record.getAttendanceTime().toLocalTime().toString() : "-"
-                ))
+                        record.getAttendanceTime() != null ? record.getAttendanceTime().toLocalTime().toString() : "-"))
                 .collect(Collectors.toList());
 
         return new AttendanceSheetResponseDto(mode, dtoList);
@@ -371,7 +399,8 @@ public class AttendanceService {
 
         // 오늘 날짜의 '예배' 스케줄에 출석했는지 확인
         // (구체적으로 어떤 예배인지 체크하려면 로직 추가 필요, 여기선 하나라도 있으면 OK)
-        List<Schedule> todayWorships = scheduleRepository.findByTypeAndStartDateBetween(ScheduleType.WORSHIP, start, end);
+        List<Schedule> todayWorships = scheduleRepository.findByTypeAndStartDateBetween(ScheduleType.WORSHIP, start,
+                end);
 
         boolean attended = false;
         LocalDateTime time = null;
@@ -394,20 +423,20 @@ public class AttendanceService {
             LocalDate endDate,
             Long cellId,
             List<ScheduleType> scheduleTypes,
-            List<WorshipCategory> worshipCategories
-    ) {
+            List<WorshipCategory> worshipCategories) {
         // [삭제] LocalDateTime 변환 불필요 (Repository가 LocalDate를 받도록 수정했으므로)
         // LocalDateTime startDateTime = startDate.atStartOfDay();
         // LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
         // NULL 처리 로직 유지
-        if (scheduleTypes != null && scheduleTypes.isEmpty()) scheduleTypes = null;
-        if (worshipCategories != null && worshipCategories.isEmpty()) worshipCategories = null;
+        if (scheduleTypes != null && scheduleTypes.isEmpty())
+            scheduleTypes = null;
+        if (worshipCategories != null && worshipCategories.isEmpty())
+            worshipCategories = null;
 
         // 1. 조회 (파라미터로 LocalDate 그대로 전달)
         List<ScheduleAttendance> attendances = attendanceRepository.findAllPresentWithFilter(
-                startDate, endDate, scheduleTypes, worshipCategories
-        );
+                startDate, endDate, scheduleTypes, worshipCategories);
 
         // 2. Cell ID 필터링 (유지)
         if (cellId != null) {
@@ -425,14 +454,13 @@ public class AttendanceService {
         // 가장 깔끔한 방법은 결과 DTO를 바로 생성하는 것입니다.
 
         Map<String, List<ScheduleAttendance>> groupedMap = attendances.stream()
-                .collect(Collectors.groupingBy(att ->
-                        att.getSchedule().getScheduleId() + "_" + att.getScheduleDate()
-                ));
+                .collect(Collectors.groupingBy(att -> att.getSchedule().getScheduleId() + "_" + att.getScheduleDate()));
 
         List<ScheduleStatDto> scheduleStats = new ArrayList<>();
 
         for (List<ScheduleAttendance> group : groupedMap.values()) {
-            if (group.isEmpty()) continue;
+            if (group.isEmpty())
+                continue;
 
             ScheduleAttendance first = group.get(0); // 대표 객체 하나 꺼냄
             Schedule schedule = first.getSchedule();
@@ -496,8 +524,9 @@ public class AttendanceService {
                 WorshipCategory.YOUTH_SERVICE, startOfYear, endOfYear);
 
         // 2-2. 연속 결석 계산용 (과거 전체, 최신순) - 최근 4주 히스토리도 여기서 추출 가능
-        List<Schedule> pastYouthServices = scheduleRepository.findAllByWorshipCategoryAndStartDateBeforeOrderByStartDateDesc(
-                WorshipCategory.YOUTH_SERVICE, now);
+        List<Schedule> pastYouthServices = scheduleRepository
+                .findAllByWorshipCategoryAndStartDateBeforeOrderByStartDateDesc(
+                        WorshipCategory.YOUTH_SERVICE, now);
 
         // 2-3. 최근 4주 스케줄 (최신순 4개 -> 시간순 정렬 필요 시 변환)
         List<Schedule> recent4Services = pastYouthServices.stream().limit(4).toList();
@@ -514,7 +543,8 @@ public class AttendanceService {
         // 여기서는 간단하게 pastYouthServices 전체를 대상으로 로딩 (스케줄 개수가 수천 개가 아니라고 가정)
         schedulesToCheck.addAll(pastYouthServices);
 
-        List<ScheduleAttendance> allAttendances = attendanceRepository.findAllByScheduleInAndStatusPresent(new ArrayList<>(schedulesToCheck));
+        List<ScheduleAttendance> allAttendances = attendanceRepository
+                .findAllByScheduleInAndStatusPresent(new ArrayList<>(schedulesToCheck));
 
         // Map<MemberId, Set<ScheduleId>> 형태로 변환하여 빠른 조회
         Map<Long, Set<Long>> memberAttendanceMap = new HashMap<>();
@@ -582,6 +612,17 @@ public class AttendanceService {
                 .orElse("미배정");
     }
 
+    // [New] 게스트(비로그인) 출석 체크 (이름 기반)
+    // 기존 통합 API(/api/schedule/{scheduleId}/check-in) 사용으로 인해 현재는 사용하지 않음
+    // 추후 별도 로직 필요 시 부활
+    /*
+     * public GuestAttendanceResponseDto
+     * checkGuestAttendance(GuestAttendanceRequestDto request) {
+     * // ... (removed to avoid confusion)
+     * return null;
+     * }
+     */
+
     private Schedule findScheduleById(Long scheduleId) {
         return scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.SCHEDULE_NOT_FOUND));
@@ -599,9 +640,12 @@ public class AttendanceService {
 
     private String getClientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null) ip = request.getHeader("Proxy-Client-IP");
-        if (ip == null) ip = request.getHeader("WL-Proxy-Client-IP");
-        if (ip == null) ip = request.getRemoteAddr();
+        if (ip == null)
+            ip = request.getHeader("Proxy-Client-IP");
+        if (ip == null)
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        if (ip == null)
+            ip = request.getRemoteAddr();
         return ip;
     }
 }

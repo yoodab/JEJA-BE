@@ -15,7 +15,6 @@ public enum CommonErrorCode implements ErrorCode {
     FORBIDDEN("C003", "권한이 없는 사용자입니다.", HttpStatus.FORBIDDEN),
     DATA_NOT_FOUND("C004", "요청한 데이터를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 
-
     // =================================================================
     // 인증/인가 관련 에러 (Authentication & Authorization) - A0xx (Auth)
     // =================================================================
@@ -60,14 +59,12 @@ public enum CommonErrorCode implements ErrorCode {
     LEADER_ALREADY_ASSIGNED("L003", "해당 멤버는 이미 다른 셀(순)에 배정되어 있습니다.", HttpStatus.CONFLICT),
     NOT_ASSIGNED_TO_CELL("L004", "배정된 셀(순)이 없습니다.", HttpStatus.NOT_FOUND),
 
-
     // =================================================================
     // 새신자(Newcomer) 관리 관련 에러 - N0xx
     // =================================================================
     NEWCOMER_NOT_FOUND("N001", "해당 새신자 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     ALREADY_SETTLED_NEWCOMER("N002", "이미 정착 처리된 새신자입니다.", HttpStatus.CONFLICT),
     ALREADY_MEMBER_REGISTERED("N003", "이미 멤버로 등록된 새신자입니다.", HttpStatus.CONFLICT),
-
 
     // =================================================================
     // 케어(Care) & 일정(Schedule) 관련 에러 - R0xx, S0xx
@@ -84,14 +81,18 @@ public enum CommonErrorCode implements ErrorCode {
     IP_ALREADY_USED("ATT03", "이미 해당 기기(IP)로 출석 체크가 완료되었습니다.", HttpStatus.CONFLICT),
     LOCATION_REQUIRED("ATT04", "위치 정보가 필요합니다.", HttpStatus.BAD_REQUEST),
     TOO_FAR_FROM_CHURCH("ATT05", "교회와의 거리가 너무 멉니다. 교회 내에서 시도해주세요.", HttpStatus.BAD_REQUEST),
-    MEMBER_NOT_FOUND_FOR_CHECK_IN("ATT06", "등록된 멤버를 찾을 수 없습니다. 이름과 생년월일을 확인하시거나, 관리자에게 문의해주세요.", HttpStatus.BAD_REQUEST),
+    MEMBER_NOT_FOUND_FOR_CHECK_IN("ATT06", "등록된 멤버를 찾을 수 없습니다. 이름과 생년월일을 확인하시거나, 관리자에게 문의해주세요.",
+            HttpStatus.BAD_REQUEST),
 
     // [New] 추가된 출석 관련 에러 코드 (명단 관리, 신청/취소)
     CANNOT_REMOVE_PRESENT_MEMBER("ATT07", "이미 출석 완료된 인원은 명단에서 삭제할 수 없습니다.", HttpStatus.BAD_REQUEST),
     ALREADY_REGISTERED("ATT08", "이미 명단에 등록되어 있거나 참석 신청된 상태입니다.", HttpStatus.CONFLICT),
     NOT_REGISTERED("ATT09", "참석 신청 내역이 존재하지 않습니다.", HttpStatus.NOT_FOUND),
     ALREADY_ATTENDED_CANNOT_CANCEL("ATT10", "이미 출석 처리가 완료되어 신청을 취소할 수 없습니다.", HttpStatus.BAD_REQUEST),
-    NOT_REGISTERED_IN_ATTENDANCE_LIST("ATT11", "명단에 등록된 인원만 출석할 수 있습니다.", HttpStatus.FORBIDDEN);
+    NOT_REGISTERED_IN_ATTENDANCE_LIST("ATT11", "명단에 등록된 인원만 출석할 수 있습니다.", HttpStatus.FORBIDDEN),
+    DUPLICATE_NAME_EXISTS("ATT12", "동명이인이 존재합니다. 관리자에게 문의해주세요.", HttpStatus.CONFLICT),
+    ALREADY_CHECKED_IN("ATT13", "이미 출석 처리되었습니다.", HttpStatus.CONFLICT),
+    ATTENDANCE_TIME_WINDOW_EXPIRED("ATT14", "출석 가능 시간(일정 시작 20분 전~20분 후)이 지났습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

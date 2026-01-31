@@ -85,6 +85,13 @@ public class SecurityConfig {
                         // 3. 출석 체크 (비로그인/공용 태블릿 사용 가능성 고려)
                         .requestMatchers("/api/schedule/*/check-in").permitAll()
 
+
+                        .requestMatchers("/api/schedule/checkable").permitAll()
+
+                        // 대시보드 일정 조회
+                        .requestMatchers("/api/schedules/upcoming").permitAll()
+                        .requestMatchers("/api/albums").permitAll()
+
                         // 4. ★ 정적 리소스 및 파일 업로드 경로 (이미지 보기용)
                         .requestMatchers("/files/**").permitAll()
                         .requestMatchers("/css/**", "/images/**", "/js/**", "/favicon.ico").permitAll()

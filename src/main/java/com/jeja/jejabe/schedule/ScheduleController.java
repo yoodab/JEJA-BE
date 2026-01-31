@@ -33,13 +33,34 @@ public class ScheduleController {
         return ResponseEntity.ok(ApiResponseForm.success(result));
     }
 
+    // [New] 관리자용 일정 조회 (Private 포함)
+    @GetMapping("/admin")
+    public ResponseEntity<ApiResponseForm<List<ScheduleResponseDto>>> getAdminSchedules(
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam(required = false) Integer day) {
+
+        List<ScheduleResponseDto> result = scheduleService.getAdminSchedules(year, month, day);
+        return ResponseEntity.ok(ApiResponseForm.success(result));
+    }
+
+    // [New] 다가오는 일정 조회 (홈페이지용)
+    @GetMapping("/upcoming")
+    public ResponseEntity<ApiResponseForm<List<ScheduleResponseDto>>> getUpcomingSchedules(
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        List<ScheduleResponseDto> result = scheduleService.getUpcomingSchedules(userDetails);
+        return ResponseEntity.ok(ApiResponseForm.success(result));
+    }
+
     // [New] 일정 상세 조회 API (단건)
     @GetMapping("/{scheduleId}")
     public ResponseEntity<ApiResponseForm<ScheduleDetailResponseDto>> getScheduleDetail(
             @PathVariable Long scheduleId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        ScheduleDetailResponseDto detail = scheduleService.getScheduleDetail(scheduleId, userDetails);
+        ScheduleDetailResponseDto detail = scheduleService.getScheduleDetail(scheduleId, date, userDetails);
         return ResponseEntity.ok(ApiResponseForm.success(detail));
     }
 
