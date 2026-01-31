@@ -1,5 +1,6 @@
 package com.jeja.jejabe.attendance;
 
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import com.jeja.jejabe.member.domain.Member;
 import com.jeja.jejabe.schedule.domain.Schedule;
 import jakarta.persistence.*;
@@ -21,7 +22,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ScheduleAttendance {
+public class ScheduleAttendance extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

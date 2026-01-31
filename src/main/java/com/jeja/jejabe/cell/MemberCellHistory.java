@@ -1,5 +1,6 @@
 package com.jeja.jejabe.cell;
 
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import com.jeja.jejabe.member.domain.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -13,7 +14,7 @@ import java.time.LocalDate;
 @Table(name = "member_cell_history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class MemberCellHistory {
+public class MemberCellHistory extends BaseTimeEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "history_id")
