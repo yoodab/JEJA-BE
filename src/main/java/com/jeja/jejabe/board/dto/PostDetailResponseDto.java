@@ -21,6 +21,8 @@ public class PostDetailResponseDto {
     private final String attachmentUrl;
     private List<CommentResponseDto> comments;
     private boolean isLiked;
+    private boolean canEdit;
+    private boolean canDelete;
 
     public PostDetailResponseDto(Post post) {
         this.postId = post.getPostId();

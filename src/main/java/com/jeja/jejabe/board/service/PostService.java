@@ -1,6 +1,9 @@
 package com.jeja.jejabe.board.service;
 
+import com.jeja.jejabe.auth.UserDetailsImpl;
+import com.jeja.jejabe.board.BoardGuard;
 import com.jeja.jejabe.board.domain.Board;
+import com.jeja.jejabe.board.domain.Comment;
 import com.jeja.jejabe.board.domain.Post;
 import com.jeja.jejabe.board.dto.*;
 import com.jeja.jejabe.board.repository.*;
@@ -20,7 +23,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Service @RequiredArgsConstructor @Transactional
+@Service
+@RequiredArgsConstructor
+@Transactional
 public class PostService {
     private final PostRepository postRepository;
     private final BoardRepository boardRepository;
@@ -28,13 +33,15 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final PostLikeRepository postLikeRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final BoardGuard boardGuard;
 
     public Long createPost(String boardKey, PostCreateRequestDto dto, Long authorMemberId) {
         Board board = boardRepository.findByBoardKey(boardKey).orElseThrow();
         Member author = memberRepository.findById(authorMemberId).orElseThrow();
 
         boolean finalIsPrivate = dto.isPrivate();
-        if (board.isAlwaysSecret()) finalIsPrivate = true;
+        if (board.isAlwaysSecret())
+            finalIsPrivate = true;
 
         Post post = Post.builder()
                 .board(board)
@@ -44,7 +51,8 @@ public class PostService {
                 .isPrivate(finalIsPrivate)
                 .isNotice(dto.isNotice())
                 .build();
-        if (dto.getAttachmentUrl() != null) post.setAttachment(dto.getAttachmentName(), dto.getAttachmentUrl());
+        if (dto.getAttachmentUrl() != null)
+            post.setAttachment(dto.getAttachmentName(), dto.getAttachmentUrl());
         return postRepository.save(post).getPostId();
     }
 
@@ -79,19 +87,28 @@ public class PostService {
     }
 
     @Transactional
-    public PostDetailResponseDto getPostById(Long postId, Long memberId) {
+    public PostDetailResponseDto getPostById(Long postId, UserDetailsImpl userDetails) {
         Post post = postRepository.findById(postId).orElseThrow();
         post.increaseViewCount();
 
         PostDetailResponseDto response = new PostDetailResponseDto(post);
 
+        Long memberId = (userDetails != null) ? userDetails.getUser().getMember().getId() : null;
+
         // 1. 게시글 좋아요 여부 확인
         if (memberId != null) {
             Member member = memberRepository.findById(memberId).orElseThrow();
             boolean isPostLiked = postLikeRepository.existsByMemberAndPost(member, post);
-            response.setLiked(isPostLiked); // DTO에 setLiked 메서드 필요 (Lombok @Setter로 해결)
+            response.setLiked(isPostLiked);
+
+            // [추가] 수정/삭제 권한 설정
+            boolean canEditDelete = boardGuard.canEditDeletePost(userDetails, postId);
+            response.setCanEdit(canEditDelete);
+            response.setCanDelete(canEditDelete);
         } else {
             response.setLiked(false);
+            response.setCanEdit(false);
+            response.setCanDelete(false);
         }
 
         // 2. 댓글 좋아요 목록 미리 가져오기 (최적화)
@@ -106,18 +123,36 @@ public class PostService {
         // 3. 댓글 DTO 변환 시 likedCommentIds 전달
         List<CommentResponseDto> comments = commentRepository.findAllByPostAndParentIsNullOrderByCreatedAtAsc(post)
                 .stream()
-                .map(comment -> new CommentResponseDto(comment, likedCommentIds)) // 생성자 변경됨
+                .map(comment -> mapToCommentDto(comment, userDetails, likedCommentIds))
                 .collect(Collectors.toList());
 
         response.setComments(comments);
         return response;
     }
 
+    private CommentResponseDto mapToCommentDto(Comment comment, UserDetailsImpl userDetails,
+                                               Set<Long> likedCommentIds) {
+        CommentResponseDto dto = new CommentResponseDto(comment, likedCommentIds);
+
+        // 권한 설정
+        boolean canEditDelete = boardGuard.canEditDeleteComment(userDetails, comment.getCommentId());
+        dto.setCanEdit(canEditDelete);
+        dto.setCanDelete(canEditDelete);
+
+        // 자식 댓글 재귀 매핑
+        List<CommentResponseDto> children = comment.getChildren().stream()
+                .map(child -> mapToCommentDto(child, userDetails, likedCommentIds))
+                .collect(Collectors.toList());
+        dto.setChildren(children);
+
+        return dto;
+    }
 
     public void updatePost(Long postId, PostUpdateRequestDto dto) {
         Post post = postRepository.findById(postId).orElseThrow();
         post.update(dto.getTitle(), dto.getContent(), dto.isPrivate(), dto.isNotice());
-        if(dto.getAttachmentUrl() != null) post.setAttachment(dto.getAttachmentName(), dto.getAttachmentUrl());
+        if (dto.getAttachmentUrl() != null)
+            post.setAttachment(dto.getAttachmentName(), dto.getAttachmentUrl());
     }
 
     public void deletePost(Long postId) {

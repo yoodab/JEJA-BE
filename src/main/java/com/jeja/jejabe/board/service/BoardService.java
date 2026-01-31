@@ -2,6 +2,7 @@ package com.jeja.jejabe.board.service;
 
 import com.jeja.jejabe.auth.UserDetailsImpl;
 import com.jeja.jejabe.auth.UserRole;
+import com.jeja.jejabe.board.BoardGuard;
 import com.jeja.jejabe.board.domain.Board;
 import com.jeja.jejabe.board.domain.BoardAccessType;
 import com.jeja.jejabe.board.dto.BoardCreateRequestDto;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 public class BoardService {
     private final BoardRepository boardRepository;
     private final ClubRepository clubRepository;
+    private final BoardGuard boardGuard;
 
     @CacheEvict(value = "boardList", allEntries = true)
     public Long createBoard(BoardCreateRequestDto dto) {
@@ -57,7 +59,8 @@ public class BoardService {
         if (dto.getClubId() != null) {
             linkedClub = clubRepository.findById(dto.getClubId()).orElseThrow();
         }
-        board.update(dto.getName(), dto.getDescription(), dto.getAccessType(), linkedClub, dto.getIsAlwaysSecret());
+        board.update(dto.getName(), dto.getDescription(), dto.getAccessType(), dto.getWriteAccessType(), linkedClub,
+                dto.getIsAlwaysSecret());
     }
 
     @CacheEvict(value = "boardList", allEntries = true)
@@ -79,13 +82,20 @@ public class BoardService {
 
         return allBoards.stream()
                 .filter(board -> {
-                    if (isAdmin) return true;
+                    if (isAdmin)
+                        return true;
                     // ★ 중요: 일반 조회에서 CLUB 게시판은 숨김
-                    if (board.getAccessType() == BoardAccessType.CLUB) return false;
-                    if (board.getAccessType() == BoardAccessType.MEMBER) return isLoggedIn;
+                    if (board.getAccessType() == BoardAccessType.CLUB)
+                        return false;
+                    if (board.getAccessType() == BoardAccessType.MEMBER)
+                        return isLoggedIn;
                     return true; // PUBLIC
                 })
-                .map(BoardResponseDto::new)
+                .map(board -> {
+                    BoardResponseDto dto = new BoardResponseDto(board);
+                    dto.setCanWrite(boardGuard.canWritePost(userDetails, board));
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 

@@ -2,6 +2,7 @@ package com.jeja.jejabe.board.dto;
 
 import com.jeja.jejabe.board.domain.Comment;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,7 +19,12 @@ public class CommentResponseDto {
     private final boolean isDeleted;
 
     private final boolean isLiked;
-    private final List<CommentResponseDto> children;
+    @Setter
+    private List<CommentResponseDto> children;
+    @Setter
+    private boolean canEdit;
+    @Setter
+    private boolean canDelete;
 
     public CommentResponseDto(Comment comment, Set<Long> likedCommentIds) {
         this.commentId = comment.getCommentId();
@@ -30,9 +36,6 @@ public class CommentResponseDto {
 
         this.isLiked = likedCommentIds != null && likedCommentIds.contains(comment.getCommentId());
 
-        // 자식 댓글들에게도 likedCommentIds를 전달
-        this.children = comment.getChildren().stream()
-                .map(child -> new CommentResponseDto(child, likedCommentIds))
-                .collect(Collectors.toList());
+        // children은 Service에서 재귀적으로 설정 (권한 체크 포함을 위해)
     }
 }
