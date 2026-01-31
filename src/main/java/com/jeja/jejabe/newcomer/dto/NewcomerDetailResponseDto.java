@@ -22,6 +22,7 @@ public class NewcomerDetailResponseDto {
     private final String managerName;
     private final Long managerMemberId;
     private final String assignmentNote;
+    private final String cellName;
 
     // 상태 관련
     private final NewcomerStatus status;       // "MAIN_WORSHIP" (코드용)
@@ -32,6 +33,7 @@ public class NewcomerDetailResponseDto {
     private final String middleStatus;  // 중간 점검
     private final String recentStatus;  // 최근 근황
     private final String profileImageUrl;
+    private final boolean isChurchRegistered;
     private final boolean isMemberRegistered;
 
     public NewcomerDetailResponseDto(Newcomer newcomer) {
@@ -52,12 +54,15 @@ public class NewcomerDetailResponseDto {
         // 상태 매핑
         this.status = newcomer.getStatus();
         this.statusDescription = newcomer.getStatus().getDescription(); // Enum에 추가한 한글 설명
+        this.cellName = newcomer.getCellName();
+
+        this.isChurchRegistered = newcomer.isChurchRegistered();
+        this.isMemberRegistered = newcomer.isMemberRegistered();
 
         // [수정됨] 누락되었던 필드 매핑 추가
         this.firstStatus = newcomer.getFirstStatus();
         this.middleStatus = newcomer.getMiddleStatus();
         this.recentStatus = newcomer.getRecentStatus();
         this.profileImageUrl = newcomer.getProfileImageUrl();
-        this.isMemberRegistered = newcomer.isMemberRegistered();
     }
 }

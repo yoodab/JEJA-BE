@@ -4,6 +4,10 @@ import com.jeja.jejabe.global.response.ApiResponseForm;
 import com.jeja.jejabe.newcomer.domain.NewcomerStatus;
 import com.jeja.jejabe.newcomer.dto.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,12 +21,12 @@ public class NewcomerController {
 
     private final NewcomerService newcomerService;
 
-    // 목록 조회
-    @GetMapping
-    public ResponseEntity<ApiResponseForm<List<NewcomerListResponseDto>>> getNewcomers(
-            @RequestParam(required = false) NewcomerStatus status) {
-        return ResponseEntity.ok(ApiResponseForm.success(newcomerService.getNewcomerList(status)));
-    }
+//    // 목록 조회
+//    @GetMapping
+//    public ResponseEntity<ApiResponseForm<List<NewcomerListResponseDto>>> getNewcomers(
+//            @RequestParam(required = false) NewcomerStatus status) {
+//        return ResponseEntity.ok(ApiResponseForm.success(newcomerService.getNewcomerList(status)));
+//    }
 
     // 상세 조회
     @GetMapping("/{newcomerId}")
@@ -60,6 +64,27 @@ public class NewcomerController {
             @RequestParam NewcomerStatus status) {
         newcomerService.changeNewcomerStatus(newcomerId, status);
         return ResponseEntity.ok(ApiResponseForm.success("새신자 상태가 변경되었습니다."));
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<ApiResponseForm<Void>> registerBatch(@RequestBody List<NewcomerBatchRequestDto> dtoList) {
+        newcomerService.registerBatch(dtoList);
+        return ResponseEntity.ok(ApiResponseForm.success(null, "일괄 등록이 완료되었습니다."));
+    }
+
+    @DeleteMapping("/{newcomerId}")
+    public ResponseEntity<ApiResponseForm<Void>> deleteNewcomer(@PathVariable Long newcomerId) {
+        newcomerService.deleteNewcomer(newcomerId);
+        return ResponseEntity.ok(ApiResponseForm.success(null, "새신자 정보가 삭제되었습니다."));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponseForm<Page<NewcomerListResponseDto>>> getNewcomers(
+            @RequestParam(required = false) Integer year, // 연도 지정
+            @RequestParam(required = false) NewcomerStatus status,
+            @PageableDefault(size = 10, sort = "registrationDate", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(ApiResponseForm.success(newcomerService.getNewcomerList(year, status, pageable)));
     }
 
 

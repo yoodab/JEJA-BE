@@ -15,4 +15,5 @@ public class NewcomerCreateRequestDto {
     private String phone;
     private String address;
     private Long managerMemberId;
+    private Boolean isChurchRegistered;
 }
