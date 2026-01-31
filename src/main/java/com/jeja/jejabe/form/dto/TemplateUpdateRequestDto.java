@@ -19,6 +19,7 @@ public class TemplateUpdateRequestDto {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private Boolean isActive;
+    private Long targetClubId;
 
     // 섹션 및 질문 목록 (수정 시에는 ID가 포함된 DTO 사용)
     private List<SectionUpdateDto> sections;

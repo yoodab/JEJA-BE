@@ -82,11 +82,12 @@ public class FormTemplate extends BaseTimeEntity {
     }
     public void updateBasicInfo(String title, String description,
                                 LocalDateTime startDate, LocalDateTime endDate,
-                                Boolean isActive) {
+                                Boolean isActive, Long targetClubId) {
         this.title = title;
         this.description = description;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.targetClubId = targetClubId;
         // null이 아닐 때만 상태 변경 (혹시나 프론트에서 안 보냈을 경우 대비)
         if (isActive != null) {
             this.isActive = isActive;

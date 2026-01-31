@@ -21,7 +21,8 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FormSubmission extends BaseTimeEntity {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -43,22 +44,18 @@ public class FormSubmission extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private SubmissionStatus status;
 
-    @Column(columnDefinition = "TEXT")
-    private String questionSnapshotJson;
-
     @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL)
     private List<FormAnswer> answers = new ArrayList<>();
 
     @Builder
-    public FormSubmission(FormTemplate template, String questionSnapshotJson,Member submitter, String guestName, String guestPhone,
-                          LocalDate submitDate, LocalDate targetSundayDate, Long targetCellId, Long targetClubId) {
+    public FormSubmission(FormTemplate template, Member submitter, String guestName, String guestPhone,
+            LocalDate submitDate, LocalDate targetSundayDate, Long targetCellId, Long targetClubId) {
         this.template = template;
         this.submitter = submitter;
         this.guestName = guestName;
         this.guestPhone = guestPhone;
         this.submitDate = submitDate;
         this.targetSundayDate = targetSundayDate;
-        this.questionSnapshotJson = questionSnapshotJson;
         this.targetCellId = targetCellId;
         this.targetClubId = targetClubId;
         this.status = SubmissionStatus.PENDING;
@@ -68,18 +65,11 @@ public class FormSubmission extends BaseTimeEntity {
         this.answers.add(answer);
     }
 
-    public List<QuestionSnapshot> getSnapshotList() {
-        if (this.questionSnapshotJson == null || this.questionSnapshotJson.isEmpty()) {
-            return new ArrayList<>();
-        }
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(this.questionSnapshotJson, new TypeReference<List<QuestionSnapshot>>() {});
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("스냅샷 파싱 실패", e);
-        }
+    public void approve() {
+        this.status = SubmissionStatus.APPROVED;
     }
 
-    public void approve() { this.status = SubmissionStatus.APPROVED; }
-    public void reject() { this.status = SubmissionStatus.REJECTED; }
+    public void reject() {
+        this.status = SubmissionStatus.REJECTED;
+    }
 }

@@ -19,6 +19,7 @@ public class TemplateCreateRequestDto {
     private Boolean isActive;
     private List<AccessDto> accessList;
     private FormType type;
+    private Long targetClubId;
 
     @Data
     public static class SectionDto {

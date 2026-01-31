@@ -14,7 +14,8 @@ import java.util.List;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FormSection extends BaseTimeEntity {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -34,14 +35,25 @@ public class FormSection extends BaseTimeEntity {
     @OrderBy("orderIndex ASC")
     private List<FormQuestion> questions = new ArrayList<>();
 
+    @Column(nullable = false)
+    private boolean isActive = true;
+
     @Builder
     public FormSection(String title, String description, int orderIndex,
-                       NextActionType defaultNextAction, Integer defaultTargetSectionIndex) {
+            NextActionType defaultNextAction, Integer defaultTargetSectionIndex) {
         this.title = title;
         this.description = description;
         this.orderIndex = orderIndex;
         this.defaultNextAction = defaultNextAction != null ? defaultNextAction : NextActionType.CONTINUE;
         this.defaultTargetSectionIndex = defaultTargetSectionIndex;
+    }
+
+    public void disable() {
+        this.isActive = false;
+    }
+
+    public void activate() {
+        this.isActive = true;
     }
 
     // Template 세팅 (addSection에서 호출됨)
@@ -53,5 +65,11 @@ public class FormSection extends BaseTimeEntity {
     public void addQuestion(FormQuestion question) {
         this.questions.add(question);
         question.setSection(this);
+    }
+
+    public void update(String title, String description, int orderIndex) {
+        this.title = title;
+        this.description = description;
+        this.orderIndex = orderIndex;
     }
 }

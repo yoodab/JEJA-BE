@@ -19,12 +19,14 @@ public class FormDetailResponseDto {
         this.title = t.getTitle();
         this.description = t.getDescription();
         this.sections = t.getSections().stream()
+                .filter(FormSection::isActive)
                 .map(SectionResponseDto::new)
                 .collect(Collectors.toList());
     }
 
     @Data
     public static class SectionResponseDto {
+        private Long id;
         private String title;
         private String description;
         private int orderIndex;
@@ -33,6 +35,7 @@ public class FormDetailResponseDto {
         private List<QuestionResponseDto> questions;
 
         public SectionResponseDto(FormSection s) {
+            this.id = s.getId();
             this.title = s.getTitle();
             this.description = s.getDescription();
             this.orderIndex = s.getOrderIndex();

@@ -13,7 +13,8 @@ import java.time.LocalDate;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FormQuestion extends BaseTimeEntity {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -46,10 +47,46 @@ public class FormQuestion extends BaseTimeEntity {
         this.isActive = false;
     }
 
+    public boolean isContentChanged(String label, QuestionType inputType, String optionsJson, boolean required,
+            boolean isMemberSpecific, WorshipCategory linkedWorshipCategory,
+            Long linkedScheduleId, LocalDate linkedScheduleDate, AttendanceSyncType syncType) {
+        if (!this.label.equals(label))
+            return true;
+        if (this.inputType != inputType)
+            return true;
+        if (this.required != required)
+            return true;
+        if (this.isMemberSpecific != isMemberSpecific)
+            return true;
+        if (this.syncType != syncType)
+            return true;
+
+        // Null checks
+        if (this.optionsJson == null && optionsJson != null)
+            return true;
+        if (this.optionsJson != null && !this.optionsJson.equals(optionsJson))
+            return true;
+
+        if (this.linkedWorshipCategory != linkedWorshipCategory)
+            return true;
+
+        if (this.linkedScheduleId == null && linkedScheduleId != null)
+            return true;
+        if (this.linkedScheduleId != null && !this.linkedScheduleId.equals(linkedScheduleId))
+            return true;
+
+        if (this.linkedScheduleDate == null && linkedScheduleDate != null)
+            return true;
+        if (this.linkedScheduleDate != null && !this.linkedScheduleDate.equals(linkedScheduleDate))
+            return true;
+
+        return false;
+    }
+
     @Builder
     public FormQuestion(String label, int orderIndex, boolean required, QuestionType inputType,
-                        AttendanceSyncType syncType, String optionsJson, Long linkedScheduleId,
-                        boolean isMemberSpecific, WorshipCategory linkedWorshipCategory,LocalDate linkedScheduleDate) {
+            AttendanceSyncType syncType, String optionsJson, Long linkedScheduleId,
+            boolean isMemberSpecific, WorshipCategory linkedWorshipCategory, LocalDate linkedScheduleDate) {
         this.label = label;
         this.orderIndex = orderIndex;
         this.required = required;

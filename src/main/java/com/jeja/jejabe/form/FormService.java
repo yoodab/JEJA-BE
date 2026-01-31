@@ -56,8 +56,8 @@ public class FormService {
                 .description(dto.getDescription())
                 .category(dto.getCategory())
                 .type(dto.getType())
+                .targetClubId(dto.getTargetClubId())
                 .build();
-
 
         for (int i = 0; i < dto.getSections().size(); i++) {
             var sDto = dto.getSections().get(i);
@@ -75,7 +75,9 @@ public class FormService {
                 String optionsJson = null;
                 try {
                     optionsJson = objectMapper.writeValueAsString(qDto.getOptions());
-                } catch (Exception e) { throw new RuntimeException("옵션 변환 실패"); }
+                } catch (Exception e) {
+                    throw new RuntimeException("옵션 변환 실패");
+                }
 
                 section.addQuestion(FormQuestion.builder()
                         .label(qDto.getLabel())
@@ -93,7 +95,6 @@ public class FormService {
         }
         return templateRepository.save(template).getId();
     }
-
 
     // 2. 폼 제출
     public void submitForm(SubmissionRequestDto dto, User user) {
@@ -114,17 +115,8 @@ public class FormService {
             targetSunday = dto.getDate().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
         }
 
-        // 스냅샷 생성
-        String snapshotJson;
-        try {
-            snapshotJson = objectMapper.writeValueAsString(
-                    template.getAllQuestions().stream().map(QuestionSnapshot::new).collect(Collectors.toList())
-            );
-        } catch (Exception e) { throw new RuntimeException("스냅샷 생성 실패"); }
-
         FormSubmission submission = FormSubmission.builder()
                 .template(template)
-                .questionSnapshotJson(snapshotJson)
                 .submitter(submitter)
                 .submitDate(dto.getDate())
                 .targetSundayDate(targetSunday)
@@ -180,7 +172,8 @@ public class FormService {
             Member target = ans.getTargetMember();
 
             // "true" 답변이고 연동이 설정된 경우만 처리
-            if (!"true".equalsIgnoreCase(ans.getValue()) || target == null || q.getSyncType() == AttendanceSyncType.NONE) {
+            if (!"true".equalsIgnoreCase(ans.getValue()) || target == null
+                    || q.getSyncType() == AttendanceSyncType.NONE) {
                 continue;
             }
 
@@ -193,8 +186,8 @@ public class FormService {
                     break;
 
                 case PRE_REGISTRATION: // 사전 신청 (명단 등록 REGISTERED)
-                    Long scheduleId = (specificScheduleId != null) ? specificScheduleId :
-                            (cat != null ? findScheduleIdByCat(weeklySchedules, cat) : null);
+                    Long scheduleId = (specificScheduleId != null) ? specificScheduleId
+                            : (cat != null ? findScheduleIdByCat(weeklySchedules, cat) : null);
 
                     if (scheduleId != null) {
                         AttendanceRegistrationDto regDto = new AttendanceRegistrationDto();
@@ -244,17 +237,20 @@ public class FormService {
     // 3. [핵심] 출석 연동 로직 (DB 기반 동적 카테고리 매칭)
     private void syncAttendance(FormSubmission submission) {
         LocalDate targetDate = submission.getTargetSundayDate();
-        if (targetDate == null) return;
+        if (targetDate == null)
+            return;
 
         LocalDateTime startOfWeek = targetDate.minusDays(6).atStartOfDay();
         LocalDateTime endOfWeek = targetDate.atTime(23, 59, 59);
 
         // 해당 주간의 예배 스케줄 조회
-        List<Schedule> weeklySchedules = scheduleRepository.findByTypeAndStartDateBetween(ScheduleType.WORSHIP, startOfWeek, endOfWeek);
+        List<Schedule> weeklySchedules = scheduleRepository.findByTypeAndStartDateBetween(ScheduleType.WORSHIP,
+                startOfWeek, endOfWeek);
 
         for (FormAnswer ans : submission.getAnswers()) {
             WorshipCategory category = ans.getQuestion().getLinkedWorshipCategory();
-            if (category == null) continue;
+            if (category == null)
+                continue;
 
             // 답변이 "true"이고 대상 멤버가 있으면 출석 처리
             if ("true".equalsIgnoreCase(ans.getValue()) && ans.getTargetMember() != null) {
@@ -269,7 +265,8 @@ public class FormService {
     // 4. 권한 체크 로직
     private boolean hasPermission(FormTemplate template, User user, AccessType requiredType) {
         // 관리자는 무조건 통과
-        if (user != null && user.getUserRole() == UserRole.ROLE_ADMIN) return true;
+        if (user != null && user.getUserRole() == UserRole.ROLE_ADMIN)
+            return true;
 
         // 비로그인 유저인 경우 GUEST 권한 확인
         if (user == null) {
@@ -293,10 +290,12 @@ public class FormService {
                 case ROLE:
                     String targetRole = access.getTargetValue();
                     // UserRole 체크
-                    if (user.getUserRole().name().equals(targetRole)) return true;
+                    if (user.getUserRole().name().equals(targetRole))
+                        return true;
                     // MemberRole 체크
                     if (member != null) {
-                        if (member.getRoles().stream().anyMatch(role -> role.name().equals(targetRole))) return true;
+                        if (member.getRoles().stream().anyMatch(role -> role.name().equals(targetRole)))
+                            return true;
                     }
                     break;
 
@@ -320,7 +319,8 @@ public class FormService {
     // 5. 마이페이지 (내 제출 내역)
     @Transactional(readOnly = true)
     public List<MySubmissionResponseDto> getMySubmissions(User user) {
-        if (user.getMember() == null) return List.of();
+        if (user.getMember() == null)
+            return List.of();
         return submissionRepository.findAllBySubmitterOrderBySubmitDateDesc(user.getMember())
                 .stream().map(MySubmissionResponseDto::new).collect(Collectors.toList());
     }
@@ -336,26 +336,28 @@ public class FormService {
 
         for (FormTemplate template : allTemplates) {
             // 1. 비활성 폼 제외 (작년 보고서 등)
-            if (!template.isActive()) continue;
+            if (!template.isActive())
+                continue;
 
             // 2. 권한 체크
-            if (!hasPermission(template, user, AccessType.RESPONDENT)) continue;
+            if (!hasPermission(template, user, AccessType.RESPONDENT))
+                continue;
 
             AvailableFormResponseDto dto = new AvailableFormResponseDto(template, false, null);
 
             // 3. [순 보고서] 날짜 계산 로직
             if (template.getCategory() == FormCategory.CELL_REPORT) {
                 // 시작일 계산: 템플릿 시작일(필수) 또는 생성일
-                LocalDate startDate = template.getStartDate() != null ?
-                        template.getStartDate().toLocalDate() :
-                        template.getCreatedAt().toLocalDate(); // createdAt 필요 시 엔티티에 추가
+                LocalDate startDate = template.getStartDate() != null ? template.getStartDate().toLocalDate()
+                        : template.getCreatedAt().toLocalDate(); // createdAt 필요 시 엔티티에 추가
 
                 // 시작일이 속한 첫 주일 계산
                 LocalDate loopDate = startDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
                 // (선택사항) 회원의 가입일 이전 보고서는 스킵하는 로직
                 if (user.getMember() != null) {
-                    LocalDate joinDate = user.getMember().getCreatedAt().toLocalDate().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+                    LocalDate joinDate = user.getMember().getCreatedAt().toLocalDate()
+                            .with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
                     if (joinDate.isAfter(loopDate)) {
                         loopDate = joinDate;
                     }
@@ -396,8 +398,9 @@ public class FormService {
             // 4. [일반/이벤트] 폼 로직
             else {
                 if (user.getMember() != null) {
-                    Optional<FormSubmission> last = submissionRepository.findFirstByTemplateAndSubmitterOrderBySubmitDateDesc(
-                            template, user.getMember());
+                    Optional<FormSubmission> last = submissionRepository
+                            .findFirstByTemplateAndSubmitterOrderBySubmitDateDesc(
+                                    template, user.getMember());
                     if (last.isPresent()) {
                         dto.setSubmitted(true);
                         dto.setLastSubmitDate(last.get().getSubmitDate());
@@ -441,7 +444,7 @@ public class FormService {
     }
 
     @Transactional(readOnly = true)
-    public List<MySubmissionResponseDto> getClubApplications(Long clubId, User user) {
+    public List<ClubSubmissionResponseDto> getClubApplications(Long clubId, User user) {
         Club club = clubRepository.findById(clubId).orElseThrow();
 
         // 권한 체크: 관리자거나 해당 클럽의 리더여야 함
@@ -451,15 +454,22 @@ public class FormService {
         }
 
         return submissionRepository.findAllByTargetClubId(clubId).stream()
-                .map(MySubmissionResponseDto::new)
+                .map(ClubSubmissionResponseDto::new)
                 .collect(Collectors.toList());
     }
-
 
     @Transactional(readOnly = true)
     public FormDetailResponseDto getTemplateDetail(Long templateId, User user) {
         FormTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new IllegalArgumentException("템플릿을 찾을 수 없습니다."));
+        return new FormDetailResponseDto(template);
+    }
+
+    @Transactional(readOnly = true)
+    public FormDetailResponseDto getTemplateByClubId(Long clubId) {
+        FormTemplate template = templateRepository.findByTargetClubId(clubId).orElse(null);
+        if (template == null)
+            return null;
         return new FormDetailResponseDto(template);
     }
 
@@ -490,22 +500,21 @@ public class FormService {
         return new AdminFormDetailResponseDto(template);
     }
 
-    // 3. 템플릿 수정 (Soft Delete 적용)
+    // 3. 템플릿 수정 (Soft Delete 적용 -> Orphan Removal로 변경)
     public void updateTemplate(Long templateId, TemplateUpdateRequestDto dto, User user) {
         FormTemplate template = templateRepository.findById(templateId)
                 .orElseThrow(() -> new IllegalArgumentException("템플릿을 찾을 수 없습니다."));
 
         // 1. 기본 정보 업데이트
-        // (FormTemplate 엔티티에 updateBasicInfo 메서드가 있다고 가정)
         template.updateBasicInfo(
                 dto.getTitle(),
                 dto.getDescription(),
                 dto.getStartDate(),
                 dto.getEndDate(),
-                dto.getIsActive() != null ? dto.getIsActive() : template.isActive()
-        );
+                dto.getIsActive() != null ? dto.getIsActive() : template.isActive(),
+                dto.getTargetClubId());
 
-        // 2. 권한 목록 갱신 (기존과 동일)
+        // 2. 권한 목록 갱신
         template.getAccessList().clear();
         if (dto.getAccessList() != null) {
             for (TemplateUpdateRequestDto.AccessDto acc : dto.getAccessList()) {
@@ -517,72 +526,108 @@ public class FormService {
             }
         }
 
-        // 3. 섹션/질문 업데이트 (DTO 타입 변경에 따른 수정)
+        // 3. 섹션/질문 업데이트
         // 요청된 섹션 ID 목록
         Set<Long> reqSectionIds = dto.getSections().stream()
-                .map(TemplateUpdateRequestDto.SectionUpdateDto::getId) // DTO 변경됨
-                .filter(Objects::nonNull).collect(Collectors.toSet());
+                .map(TemplateUpdateRequestDto.SectionUpdateDto::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        // 요청된 질문 ID 목록
-        Set<Long> reqQuestionIds = dto.getSections().stream()
-                .flatMap(s -> s.getQuestions().stream())
-                .map(TemplateUpdateRequestDto.QuestionUpdateDto::getId) // DTO 변경됨
-                .filter(Objects::nonNull).collect(Collectors.toSet());
+        // 3-1. 삭제된 섹션 처리 (Soft Delete)
+        // 기존: template.getSections().removeIf(section ->
+        // !reqSectionIds.contains(section.getId()));
+        template.getSections().stream()
+                .filter(section -> !reqSectionIds.contains(section.getId()))
+                .forEach(FormSection::disable);
 
-        // A. 기존 항목 Soft Delete (기존 로직 동일)
-        for (FormSection section : template.getSections()) {
-            if (!reqSectionIds.contains(section.getId())) {
-                section.getQuestions().forEach(FormQuestion::disable);
-            } else {
-                for (FormQuestion q : section.getQuestions()) {
-                    if (!reqQuestionIds.contains(q.getId())) {
-                        q.disable();
-                    }
-                }
-            }
-        }
-
-        // B. 갱신 및 신규 생성
+        // 3-2. 섹션 갱신 및 추가
         for (int i = 0; i < dto.getSections().size(); i++) {
             var sDto = dto.getSections().get(i);
 
             FormSection section = null;
             if (sDto.getId() != null) {
                 section = template.getSections().stream()
-                        .filter(s -> s.getId().equals(sDto.getId())).findFirst().orElse(null);
+                        .filter(s -> s.getId().equals(sDto.getId()))
+                        .findFirst()
+                        .orElse(null);
             }
+
             if (section == null) {
-                section = FormSection.builder().title(sDto.getTitle()).orderIndex(i).build();
+                // 신규 섹션
+                section = FormSection.builder()
+                        .title(sDto.getTitle())
+                        .description(sDto.getDescription())
+                        .orderIndex(i)
+                        .build();
                 template.addSection(section);
+            } else {
+                // 기존 섹션 업데이트
+                section.update(sDto.getTitle(), sDto.getDescription(), i);
+                section.activate();
             }
-            // 섹션 정보 업데이트 (필요 시)
+
+            // 3-3. 질문 처리
+            // 요청된 질문 ID 목록
+            Set<Long> reqQuestionIds = sDto.getQuestions().stream()
+                    .map(TemplateUpdateRequestDto.QuestionUpdateDto::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            // 삭제된 질문 처리 (Soft Delete)
+            // 기존: section.getQuestions().removeIf(q ->
+            // !reqQuestionIds.contains(q.getId()));
+            section.getQuestions().stream()
+                    .filter(q -> !reqQuestionIds.contains(q.getId()))
+                    .forEach(FormQuestion::disable);
 
             for (int j = 0; j < sDto.getQuestions().size(); j++) {
                 var qDto = sDto.getQuestions().get(j);
                 String optionsJson = null;
                 try {
                     optionsJson = objectMapper.writeValueAsString(qDto.getOptions());
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                }
 
                 FormQuestion question = null;
                 if (qDto.getId() != null) {
-                    question = questionRepository.findById(qDto.getId()).orElse(null);
+                    question = section.getQuestions().stream()
+                            .filter(q -> q.getId().equals(qDto.getId()))
+                            .findFirst()
+                            .orElse(null);
                 }
 
                 if (question != null) {
-                    // [기존 질문 수정]
-                    question.setLabel(qDto.getLabel());
-                    question.setInputType(qDto.getInputType());
-                    question.setSyncType(qDto.getSyncType());
-                    question.setOptionsJson(optionsJson);
-                    question.setRequired(qDto.isRequired());
-                    question.setOrderIndex(j);
-                    question.setSection(section);
-                    question.setMemberSpecific(qDto.isMemberSpecific());
+                    // 기존 질문 수정
+                    // 내용 변경 여부 확인
+                    boolean isChanged = question.isContentChanged(
+                            qDto.getLabel(), qDto.getInputType(), optionsJson, qDto.isRequired(),
+                            qDto.isMemberSpecific(), qDto.getLinkedWorshipCategory(),
+                            qDto.getLinkedScheduleId(), qDto.getLinkedScheduleDate(), qDto.getSyncType());
 
-                    question.setActive(true); // Soft Delete 되었던 것 복구
+                    if (isChanged) {
+                        // 내용 변경 시: 기존 질문 비활성화 + 신규 질문 생성
+                        question.disable();
+
+                        FormQuestion newQuestion = FormQuestion.builder()
+                                .label(qDto.getLabel())
+                                .inputType(qDto.getInputType())
+                                .syncType(qDto.getSyncType())
+                                .optionsJson(optionsJson)
+                                .required(qDto.isRequired())
+                                .orderIndex(j)
+                                .isMemberSpecific(qDto.isMemberSpecific())
+                                .linkedWorshipCategory(qDto.getLinkedWorshipCategory())
+                                .linkedScheduleId(qDto.getLinkedScheduleId())
+                                .linkedScheduleDate(qDto.getLinkedScheduleDate())
+                                .build();
+                        section.addQuestion(newQuestion);
+                    } else {
+                        // 내용 변경 없음: 순서만 업데이트 및 활성화
+                        question.setOrderIndex(j);
+                        question.setActive(true);
+                    }
                 } else {
-                    // [신규 질문 생성]
+                    // 신규 질문 생성
                     section.addQuestion(FormQuestion.builder()
                             .label(qDto.getLabel())
                             .inputType(qDto.getInputType())
@@ -592,8 +637,8 @@ public class FormService {
                             .orderIndex(j)
                             .isMemberSpecific(qDto.isMemberSpecific())
                             .linkedWorshipCategory(qDto.getLinkedWorshipCategory())
-                            .linkedScheduleId(qDto.getLinkedScheduleId())     // 필드 매핑
-                            .linkedScheduleDate(qDto.getLinkedScheduleDate()) // 필드 매핑
+                            .linkedScheduleId(qDto.getLinkedScheduleId())
+                            .linkedScheduleDate(qDto.getLinkedScheduleDate())
                             .build());
                 }
             }

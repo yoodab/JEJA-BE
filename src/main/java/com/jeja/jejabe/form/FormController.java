@@ -60,6 +60,20 @@ public class FormController {
         return ResponseEntity.ok(ApiResponseForm.success(formService.getTemplateDetail(id, user)));
     }
 
+    @GetMapping("/forms/templates/club/{clubId}")
+    public ResponseEntity<ApiResponseForm<FormDetailResponseDto>> getTemplateByClubId(
+            @PathVariable Long clubId) {
+        return ResponseEntity.ok(ApiResponseForm.success(formService.getTemplateByClubId(clubId)));
+    }
+
+    @GetMapping("/clubs/{clubId}/submissions")
+    public ResponseEntity<ApiResponseForm<List<ClubSubmissionResponseDto>>> getClubSubmissions(
+            @PathVariable Long clubId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity
+                .ok(ApiResponseForm.success(formService.getClubApplications(clubId, userDetails.getUser())));
+    }
+
     @PutMapping("/admin/forms/templates/{id}")
     public ResponseEntity<ApiResponseForm<Void>> updateTemplate(
             @PathVariable Long id,
@@ -69,6 +83,7 @@ public class FormController {
         formService.updateTemplate(id, dto, userDetails.getUser());
         return ResponseEntity.ok(ApiResponseForm.success("수정 완료"));
     }
+
     @PatchMapping("/admin/forms/templates/{id}/status")
     public ResponseEntity<ApiResponseForm<Void>> updateTemplateStatus(
             @PathVariable Long id,
@@ -95,8 +110,7 @@ public class FormController {
     public ResponseEntity<ApiResponseForm<List<AvailableFormResponseDto>>> getAllTemplates(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(ApiResponseForm.success(
-                formService.getAllTemplatesForAdmin(userDetails.getUser())
-        ));
+                formService.getAllTemplatesForAdmin(userDetails.getUser())));
     }
 
     @GetMapping("/admin/forms/templates/{id}")
@@ -104,8 +118,7 @@ public class FormController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(ApiResponseForm.success(
-                formService.getTemplateDetailForAdmin(id, userDetails.getUser())
-        ));
+                formService.getTemplateDetailForAdmin(id, userDetails.getUser())));
     }
     // --- [ADMIN] Submission Management ---
 
@@ -113,16 +126,14 @@ public class FormController {
     public ResponseEntity<ApiResponseForm<List<AdminSubmissionSummaryDto>>> getSubmissions(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponseForm.success(
-                formService.getSubmissionsByTemplate(id)
-        ));
+                formService.getSubmissionsByTemplate(id)));
     }
 
     @GetMapping("/admin/forms/submissions/{id}")
     public ResponseEntity<ApiResponseForm<SubmissionDetailResponseDto>> getSubmissionDetail(
             @PathVariable Long id) {
         return ResponseEntity.ok(ApiResponseForm.success(
-                formService.getSubmissionDetailForAdmin(id)
-        ));
+                formService.getSubmissionDetailForAdmin(id)));
     }
 
 }

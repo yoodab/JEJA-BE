@@ -21,9 +21,9 @@ public class SubmissionDetailResponseDto {
         this.formTitle = submission.getTemplate().getTitle();
         this.submitDate = submission.getSubmitDate().toString();
 
-        // 스냅샷 리스트를 순회하며 DTO 생성
-        this.items = submission.getSnapshotList().stream()
-                .map(snapshot -> new QuestionAnswerDto(snapshot, submission.getAnswers())) // 생성자 호출
+        // 답변 리스트를 순회하며 DTO 생성
+        this.items = submission.getAnswers().stream()
+                .map(answer -> new QuestionAnswerDto(answer))
                 .collect(Collectors.toList());
     }
 
@@ -33,22 +33,18 @@ public class SubmissionDetailResponseDto {
         private String label;
         private QuestionType inputType;
 
-        // 답변 리스트 (멤버명 + 값)
+        // 답변 리스트 (멤버명 + 값) - 단일 답변이지만 구조 유지
         private List<AnswerDetail> answers;
 
-        public QuestionAnswerDto(QuestionSnapshot snapshot, List<FormAnswer> allAnswers) {
-            this.questionId = snapshot.getQuestionId();
-            this.label = snapshot.getLabel();
-            this.inputType = snapshot.getInputType();
+        public QuestionAnswerDto(FormAnswer answer) {
+            this.questionId = answer.getQuestion().getId();
+            this.label = answer.getQuestion().getLabel();
+            this.inputType = answer.getQuestion().getInputType();
 
-            // 이 질문에 해당하는 모든 답변을 수집
-            this.answers = allAnswers.stream()
-                    .filter(a -> a.getQuestion().getId().equals(snapshot.getQuestionId()))
-                    .map(a -> new AnswerDetail(
-                            a.getTargetMember() != null ? a.getTargetMember().getName() : null,
-                            a.getValue()
-                    ))
-                    .collect(Collectors.toList());
+            this.answers = List.of(new AnswerDetail(
+                    answer.getTargetMember() != null ? answer.getTargetMember().getName() : null,
+                    answer.getValue()
+            ));
         }
     }
 
