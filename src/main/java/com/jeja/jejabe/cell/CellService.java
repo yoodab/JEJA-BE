@@ -5,6 +5,7 @@ import com.jeja.jejabe.cell.dto.*;
 import com.jeja.jejabe.global.exception.CommonErrorCode;
 import com.jeja.jejabe.global.exception.GeneralException;
 import com.jeja.jejabe.member.domain.Member;
+import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -41,12 +42,25 @@ public class CellService {
                     .member(leader)
                     .isLeader(true)
                     .build();
+
+            // [Active Status Check]
+            // 시스템에 활성화된 멤버가 없거나(초기 상태), 해당 연도가 활성화된 상태라면 자동 활성화
+            boolean anyActive = memberCellHistoryRepository.existsByIsActiveTrue();
+            boolean isYearActive = memberCellHistoryRepository.existsByCell_YearAndIsActiveTrue(savedCell.getYear());
+
+            if (!anyActive || isYearActive) {
+                history.updateStatus(true);
+            }
+
             memberCellHistoryRepository.save(history);
+
+            // [Role Update] 리더 권한 추가
+            leader.addRole(MemberRole.CELL_LEADER);
+            memberRepository.save(leader);
         }
 
         return savedCell.getCellId();
     }
-
 
     @Transactional(readOnly = true)
     public MyCellResponseDto getMyCellInfo(User user) {
@@ -109,21 +123,25 @@ public class CellService {
                 .collect(Collectors.toMap(Cell::getCellId, c -> c));
 
         // 3. 해당 순들에 현재 소속된 모든 멤버 기록(History) 조회 (삭제 대상 판별용)
-        //    (주의: year가 일치하는지 확인 필요, 여기선 targetCells의 year를 기준)
-        List<MemberCellHistory> existingHistories = memberCellHistoryRepository.findAllByCellInAndIsActiveTrue(targetCells);
+        // (주의: year가 일치하는지 확인 필요, 여기선 targetCells의 year를 기준)
+        List<MemberCellHistory> existingHistories = memberCellHistoryRepository
+                .findAllByCellInAndIsActiveTrue(targetCells);
 
         // 4. 업데이트 로직 수행
-        //    (Set을 이용해 '이번 요청에서 처리된 멤버 ID'를 추적)
+        // (Set을 이용해 '이번 요청에서 처리된 멤버 ID'를 추적)
         Set<Long> processedMemberIds = new HashSet<>();
 
         for (CellMemberBatchUpdateRequestDto.CellUpdateInfo info : requestDto.getCellUpdates()) {
             Cell targetCell = cellMap.get(info.getCellId());
-            if (targetCell == null) continue;
+            if (targetCell == null)
+                continue;
 
             // 리더 + 순원 ID 합치기
             Set<Long> membersInCell = new HashSet<>();
-            if (info.getMemberIds() != null) membersInCell.addAll(info.getMemberIds());
-            if (info.getLeaderId() != null) membersInCell.add(info.getLeaderId());
+            if (info.getMemberIds() != null)
+                membersInCell.addAll(info.getMemberIds());
+            if (info.getLeaderId() != null)
+                membersInCell.add(info.getLeaderId());
 
             // 멤버들 처리
             List<Member> members = memberRepository.findAllById(membersInCell);
@@ -131,20 +149,38 @@ public class CellService {
                 boolean isLeader = member.getId().equals(info.getLeaderId());
                 processedMemberIds.add(member.getId()); // 처리됨 표시
 
+                // [Role Update] 순장 권한 동기화 (1인 1순 원칙 가정)
+                if (isLeader) {
+                    member.addRole(MemberRole.CELL_LEADER);
+                } else {
+                    member.removeRole(MemberRole.CELL_LEADER);
+                }
+
                 // 이미 활동 중인 기록이 있는지 전수 조사 (다른 순에서 이동해온 경우 포함)
-                Optional<MemberCellHistory> activeHistoryOpt =
-                        memberCellHistoryRepository.findByMemberAndIsActiveTrue(member);
+                Optional<MemberCellHistory> activeHistoryOpt = memberCellHistoryRepository
+                        .findByMemberAndIsActiveTrue(member);
 
                 if (activeHistoryOpt.isPresent()) {
                     // [이동/수정]: 기존 기록을 이 셀로 업데이트
                     activeHistoryOpt.get().changeAssignment(targetCell, isLeader);
                 } else {
                     // [신규]: 기록 없으면 생성
-                    memberCellHistoryRepository.save(MemberCellHistory.builder()
+                    MemberCellHistory newHistory = MemberCellHistory.builder()
                             .cell(targetCell)
                             .member(member)
                             .isLeader(isLeader)
-                            .build());
+                            .build();
+
+                    // [Active Status Check]
+                    boolean anyActive = memberCellHistoryRepository.existsByIsActiveTrue();
+                    boolean isYearActive = memberCellHistoryRepository
+                            .existsByCell_YearAndIsActiveTrue(targetCell.getYear());
+
+                    if (!anyActive || isYearActive) {
+                        newHistory.updateStatus(true);
+                    }
+
+                    memberCellHistoryRepository.save(newHistory);
                 }
             }
         }
@@ -158,7 +194,6 @@ public class CellService {
             }
         }
     }
-
 
     public void activateCellsByYear(Integer year) {
         // Step A. 기존에 활성화되어 있던 모든 기록(작년 기록 등)을 비활성화(종료) 처리
