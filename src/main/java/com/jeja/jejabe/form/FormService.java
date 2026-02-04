@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jeja.jejabe.attendance.AttendanceService;
 import com.jeja.jejabe.attendance.dto.AttendanceRegistrationDto;
 import com.jeja.jejabe.auth.User;
+import com.jeja.jejabe.auth.UserRepository;
 import com.jeja.jejabe.auth.UserRole;
+import com.jeja.jejabe.notification.service.FcmService;
 import com.jeja.jejabe.club.Club;
 import com.jeja.jejabe.club.ClubMember;
 import com.jeja.jejabe.club.ClubMemberRepository;
@@ -47,6 +49,8 @@ public class FormService {
     private final ScheduleRepository scheduleRepository;
     private final ClubRepository clubRepository;
     private final ClubMemberRepository clubMemberRepository;
+    private final FcmService fcmService;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // 1. 템플릿 생성
@@ -148,6 +152,11 @@ public class FormService {
                     .build());
         }
         submissionRepository.save(submission);
+
+        // Club Application Notification
+        if (template.getCategory() == FormCategory.CLUB_APPLICATION && template.getTargetClubId() != null) {
+            sendClubApplicationNotification(template.getTargetClubId(), submitter, submission);
+        }
 
         // [핵심] 질문별 syncType에 따른 출석/참석 연동 처리
         processAttendanceSync(submission, dto.getTargetScheduleId());
@@ -443,6 +452,17 @@ public class FormService {
         }
     }
 
+    public void rejectSubmission(Long submissionId, User currentUser) {
+        FormSubmission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new IllegalArgumentException("제출 내역을 찾을 수 없습니다."));
+
+        if (!hasPermission(submission.getTemplate(), currentUser, AccessType.MANAGER)) {
+            throw new GeneralException(CommonErrorCode.FORBIDDEN);
+        }
+
+        submission.reject();
+    }
+
     @Transactional(readOnly = true)
     public List<ClubSubmissionResponseDto> getClubApplications(Long clubId, User user) {
         Club club = clubRepository.findById(clubId).orElseThrow();
@@ -693,5 +713,22 @@ public class FormService {
         }
         templateRepository.save(template);
         // Transactional에 의해 자동 저장 (Dirty Checking)
+    }
+
+    private void sendClubApplicationNotification(Long clubId, Member applicant, FormSubmission submission) {
+        try {
+            Club club = clubRepository.findById(clubId).orElse(null);
+            if (club != null && club.getLeader() != null) {
+                Member leader = club.getLeader();
+                String applicantName = (applicant != null) ? applicant.getName() : submission.getGuestName();
+                String title = "팀 가입 신청 알림";
+                String body = applicantName + "님이 " + club.getName() + " 팀에 가입을 신청했습니다.";
+
+                userRepository.findByMember(leader)
+                        .ifPresent(user -> fcmService.sendNotificationToUser(user.getId(), title, body));
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send notification: " + e.getMessage());
+        }
     }
 }

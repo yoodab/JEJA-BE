@@ -12,12 +12,24 @@ public class FormDetailResponseDto {
     private Long templateId;
     private String title;
     private String description;
+    private FormCategory category;
+    private FormType type;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private Long targetClubId;
+    private boolean isActive;
     private List<SectionResponseDto> sections;
 
     public FormDetailResponseDto(FormTemplate t) {
         this.templateId = t.getId();
         this.title = t.getTitle();
         this.description = t.getDescription();
+        this.category = t.getCategory();
+        this.type = t.getType();
+        this.startDate = t.getStartDate() != null ? t.getStartDate().toLocalDate() : null;
+        this.endDate = t.getEndDate() != null ? t.getEndDate().toLocalDate() : null;
+        this.targetClubId = t.getTargetClubId();
+        this.isActive = t.isActive();
         this.sections = t.getSections().stream()
                 .filter(FormSection::isActive)
                 .map(SectionResponseDto::new)

@@ -40,6 +40,14 @@ public class FormController {
         return ResponseEntity.ok(ApiResponseForm.success("승인 완료"));
     }
 
+    @PatchMapping("/forms/submissions/{id}/reject")
+    public ResponseEntity<ApiResponseForm<Void>> rejectSubmission(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        formService.rejectSubmission(id, userDetails.getUser());
+        return ResponseEntity.ok(ApiResponseForm.success("거절 완료"));
+    }
+
     @GetMapping("/forms/submissions/my")
     public ResponseEntity<ApiResponseForm<List<MySubmissionResponseDto>>> getMySubmissions(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
