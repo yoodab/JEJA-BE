@@ -1,5 +1,6 @@
 package com.jeja.jejabe.auth;
 
+import com.jeja.jejabe.member.domain.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,4 +19,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByLoginId(@Param("loginId") String loginId);
 
     long countByStatus(UserStatus status);
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    Optional<User> findByMember(Member member);
+
+    boolean existsByMember(Member member);
+
+    @Query("SELECT u FROM User u WHERE u.member.id IN :memberIds")
+    List<User> findAllByMemberIds(@Param("memberIds") List<Long> memberIds);
+
+    @Query("SELECT u FROM User u JOIN u.member m JOIN m.roles r WHERE r = com.jeja.jejabe.member.domain.MemberRole.CELL_LEADER")
+    List<User> findAllSoonjangs();
 }

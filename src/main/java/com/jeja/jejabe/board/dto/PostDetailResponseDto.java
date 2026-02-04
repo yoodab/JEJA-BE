@@ -20,6 +20,9 @@ public class PostDetailResponseDto {
     private final boolean isPrivate;
     private final String attachmentUrl;
     private List<CommentResponseDto> comments;
+    private boolean isLiked;
+    private boolean canEdit;
+    private boolean canDelete;
 
     public PostDetailResponseDto(Post post) {
         this.postId = post.getPostId();

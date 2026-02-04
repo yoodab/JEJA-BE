@@ -2,7 +2,7 @@ name: Home Server Auto Deploy
 
 on:
   push:
-    branches: [ "main" ]  # main 브랜치에 푸시될 때 실행
+    branches: [ "main" ]
 
 jobs:
   deploy:
@@ -14,22 +14,25 @@ jobs:
           echo ">>> 1. 백엔드 폴더로 이동"
           cd /home/dabin/backend
           
-          echo ">>> 2. 깃허브 최신 코드 강제 동기화 (충돌 해결)"
-          # 원격 저장소 정보 갱신
+          echo ">>> 2. 깃허브 최신 코드 강제 동기화"
           git fetch --all
-          
-          # 로컬 변경사항(설정파일 수정 등) 다 무시하고 깃허브 코드로 덮어쓰기
           git reset --hard origin/main
-          
-          # 확실하게 당겨오기
           git pull origin main
-          
-          # gradlew 실행 권한 주기 (가끔 풀릴 때가 있어서 추가함)
           chmod +x gradlew
+
+          echo ">>> 3. .env 파일 생성 (GitHub Secrets 적용)
+          # 시크릿(ENV_FILE) 내용을 가져와서 .env 파일로 덮어쓰기
+          echo "${{ secrets.ENV_FILE }}" > .env
           
-          echo ">>> 3. 배포 스크립트 실행"
+          # 파일이 잘 만들어졌는지 확인 (내용은 보안상 안 보여줌)
+          if [ -f ".env" ]; then
+            echo ".env 파일 생성 성공!"
+          else
+            echo ".env 파일 생성 실패 ㅠㅠ"
+            exit 1
+          fi
+          
+          echo ">>> 4. 배포 스크립트 실행"
           cd /home/dabin
-          
-          # 배포 스크립트에도 실행 권한 주기
           chmod +x deploy.sh
           ./deploy.sh

@@ -2,6 +2,7 @@ package com.jeja.jejabe.board.controller;
 
 import com.jeja.jejabe.auth.UserDetailsImpl;
 import com.jeja.jejabe.board.dto.CommentRequestDto;
+import com.jeja.jejabe.board.dto.CommentUpdateRequestDto;
 import com.jeja.jejabe.board.service.CommentService;
 import com.jeja.jejabe.global.response.ApiResponseForm;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,17 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponseForm.success(commentService.createComment(postId, dto, user.getUser().getMember().getId()), "댓글 등록"));
     }
 
+    // [추가] 댓글 수정 API
+    @PatchMapping("/comments/{commentId}")
+    @PreAuthorize("@boardGuard.canEditDeleteComment(principal, #commentId)")
+    public ResponseEntity<?> updateComment(@PathVariable Long commentId, @RequestBody CommentUpdateRequestDto dto) {
+        commentService.updateComment(commentId, dto.getContent());
+        return ResponseEntity.ok(ApiResponseForm.success(null, "댓글 수정"));
+    }
+
+    // [수정] 권한 체크 메서드 이름 변경 반영
     @DeleteMapping("/comments/{commentId}")
-    @PreAuthorize("@boardGuard.canDeleteComment(principal, #commentId)")
+    @PreAuthorize("@boardGuard.canEditDeleteComment(principal, #commentId)")
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId) {
         commentService.deleteComment(commentId);
         return ResponseEntity.ok(ApiResponseForm.success(null, "댓글 삭제"));

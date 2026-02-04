@@ -1,9 +1,6 @@
 package com.jeja.jejabe.schedule.dto;
 
-import com.jeja.jejabe.schedule.domain.RecurrenceRule;
-import com.jeja.jejabe.schedule.domain.Schedule;
-import com.jeja.jejabe.schedule.domain.ScheduleType;
-import com.jeja.jejabe.schedule.domain.SharingScope;
+import com.jeja.jejabe.schedule.domain.*;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -19,6 +16,9 @@ public class ScheduleResponseDto {
     private final SharingScope sharingScope;
     private final RecurrenceRule recurrenceRule;
 
+    private final WorshipCategory worshipCategory;
+    private final String worshipCategoryName;
+
     // 일반 일정용 생성자
     public ScheduleResponseDto(Schedule schedule) {
         this.scheduleId = schedule.getScheduleId();
@@ -29,6 +29,10 @@ public class ScheduleResponseDto {
         this.location = schedule.getLocation();
         this.sharingScope = schedule.getSharingScope();
         this.recurrenceRule = schedule.getRecurrenceRule();
+        this.worshipCategory = schedule.getWorshipCategory();
+        this.worshipCategoryName = schedule.getWorshipCategory() != null
+                ? schedule.getWorshipCategory().getDescription()
+                : null;
     }
 
     // 반복 일정용 생성자
@@ -41,5 +45,9 @@ public class ScheduleResponseDto {
         this.location = originalSchedule.getLocation();
         this.sharingScope = originalSchedule.getSharingScope();
         this.recurrenceRule = originalSchedule.getRecurrenceRule();
+        this.worshipCategory = originalSchedule.getWorshipCategory();
+        this.worshipCategoryName = originalSchedule.getWorshipCategory() != null
+                ? originalSchedule.getWorshipCategory().getDescription()
+                : null;
     }
 }

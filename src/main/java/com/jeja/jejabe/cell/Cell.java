@@ -1,5 +1,6 @@
 package com.jeja.jejabe.cell;
 
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -13,7 +14,7 @@ import java.util.List;
 @Table(name = "cell") // 테이블 이름도 'cell'로 변경
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Cell {
+public class Cell extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,8 +41,7 @@ public class Cell {
     }
 
     // 셀 정보 업데이트 메소드
-    public void update(String cellName, Integer year) {
+    public void update(String cellName) {
         this.cellName = cellName;
-        this.year = year;
     }
 }

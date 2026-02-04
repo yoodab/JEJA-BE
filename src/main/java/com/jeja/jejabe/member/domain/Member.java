@@ -2,6 +2,7 @@ package com.jeja.jejabe.member.domain;
 
 import com.jeja.jejabe.auth.User;
 import com.jeja.jejabe.cell.MemberCellHistory;
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import com.jeja.jejabe.member.dto.MemberUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.*;
@@ -16,7 +17,7 @@ import java.util.Set;
 @Table(name = "member")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Member {
+public class Member extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,10 +45,7 @@ public class Member {
 
     // [핵심 변경] 단일 직분(Position) 대신 역할 목록(Set<Role>) 사용
     @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(
-            name = "member_roles",
-            joinColumns = @JoinColumn(name = "member_id")
-    )
+    @CollectionTable(name = "member_roles", joinColumns = @JoinColumn(name = "member_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
 
@@ -66,7 +64,8 @@ public class Member {
     // 생성자 (Builder 패턴)
     // ========================================================================
     @Builder
-    public Member(String name, String phone, LocalDate birthDate, MemberStatus memberStatus, @Singular("role") Set<MemberRole> roles, Gender gender,String memberImageUrl) {
+    public Member(String name, String phone, LocalDate birthDate, MemberStatus memberStatus,
+            @Singular("role") Set<MemberRole> roles, Gender gender, String memberImageUrl) {
         this.name = name;
         this.phone = phone;
         this.birthDate = birthDate;
@@ -85,7 +84,10 @@ public class Member {
         this.phone = dto.getPhone();
         this.birthDate = dto.getBirthDate();
         this.memberStatus = dto.getMemberStatus();
-        this.roles = dto.getRoles();
+
+        if (dto.getRoles() != null) {
+            this.roles = dto.getRoles();
+        }
 
         // [확인] 이 부분이 있어야 프론트에서 사진 수정 시 반영됨
         if (dto.getMemberImageUrl() != null) {
@@ -108,11 +110,9 @@ public class Member {
         this.memberStatus = MemberStatus.NEWCOMER;
     }
 
-
     public void updateProfileImage(String imageUrl) {
         this.memberImageUrl = imageUrl;
     }
-
 
     // [변경] 유저 승인 시 상태 변경 및 초기 역할 부여
     public void activateMember(MemberStatus status, MemberRole newRole) {
@@ -129,5 +129,13 @@ public class Member {
     // [추가] 편의 메서드: 역할 하나 제거
     public void removeRole(MemberRole role) {
         this.roles.remove(role);
+    }
+
+    // [New] 본인 정보 수정 (연락처, 프로필 사진 등 허용된 필드만)
+    public void updateContactInfo(String phone, String memberImageUrl) {
+        if (phone != null)
+            this.phone = phone;
+        if (memberImageUrl != null)
+            this.memberImageUrl = memberImageUrl;
     }
 }

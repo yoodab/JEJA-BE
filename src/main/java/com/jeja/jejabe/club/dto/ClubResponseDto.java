@@ -8,8 +8,6 @@ public class ClubResponseDto {
     private Long id;
     private String name;
     private String description;
-    private String meetingTime;
-    private String meetingPlace;
     private String type;
     private String leaderName;
     private int memberCount;
@@ -18,8 +16,6 @@ public class ClubResponseDto {
         this.id = club.getId();
         this.name = club.getName();
         this.description = club.getDescription();
-        this.meetingTime = club.getMeetingTime();
-        this.meetingPlace = club.getMeetingPlace();
         this.type = club.getType().name();
         this.leaderName = club.getLeader() != null ? club.getLeader().getName() : "미정";
         this.memberCount = club.getMembers().size();

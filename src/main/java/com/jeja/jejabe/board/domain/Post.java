@@ -8,6 +8,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -43,6 +46,13 @@ public class Post extends BaseTimeEntity {
     private int likeCount = 0;
     private int commentCount = 0;
 
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostLike> likes = new ArrayList<>();
+
+    // [추가] 게시글 삭제 시, 달려있는 '댓글'도 같이 삭제
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>();
+
     @Builder
     public Post(Board board, String title, String content, Member author, boolean isPrivate ,boolean isNotice) {
         this.board = board;
@@ -64,7 +74,13 @@ public class Post extends BaseTimeEntity {
         this.isPrivate = isPrivate;
         this.isNotice = isNotice; // 추가
     }
+    public void increaseViewCount() {
+        this.viewCount++;
+    }
 
+    public void toggleNotice() {
+        this.isNotice = !this.isNotice;
+    }
     public void updateLikeCount(int count) { this.likeCount = count; }
     public void updateCommentCount(int count) { this.commentCount = count; }
 }

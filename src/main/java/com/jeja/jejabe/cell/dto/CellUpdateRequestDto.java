@@ -7,5 +7,4 @@ import lombok.Setter;
 @Setter
 public class CellUpdateRequestDto {
     private String cellName;
-    private Integer year;
 }

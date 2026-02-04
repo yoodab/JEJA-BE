@@ -39,4 +39,22 @@ public class BoardController {
     public ResponseEntity<?> getAllBoards() {
         return ResponseEntity.ok(ApiResponseForm.success(boardService.getAllBoards(), "조회 완료"));
     }
+
+    @GetMapping("/boards/general")
+    public ResponseEntity<?> getGeneralBoards() {
+        return ResponseEntity.ok(ApiResponseForm.success(
+                boardService.getGeneralBoards(),
+                "일반 게시판 목록"
+        ));
+    }
+
+    // [추가] 특정 클럽의 게시판 목록 조회
+    // URL: GET /api/clubs/{clubId}/boards
+    @GetMapping("/clubs/{clubId}/boards")
+    public ResponseEntity<?> getClubBoards(@PathVariable Long clubId) {
+        return ResponseEntity.ok(ApiResponseForm.success(
+                boardService.getClubBoards(clubId),
+                "클럽 게시판 목록"
+        ));
+    }
 }

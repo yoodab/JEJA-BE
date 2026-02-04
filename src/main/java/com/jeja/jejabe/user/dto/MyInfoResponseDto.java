@@ -16,6 +16,9 @@ public class MyInfoResponseDto {
     private String loginId;
     private String name;
     private String phone;
+    private String userPhone;
+    private String email;
+    private String profileImageUrl;
     private LocalDate birthDate;
 
     private String role;
@@ -29,7 +32,9 @@ public class MyInfoResponseDto {
     private Set<MemberRole> memberRoles;
 
     @Builder
-    private MyInfoResponseDto(Long userId, String loginId, String name, String phone, LocalDate birthDate, String role, String status, String position, Long soonId, String soonName, boolean hasAccount, Set<MemberRole> memberRoles) {
+    private MyInfoResponseDto(Long userId, String loginId, String name, String phone, LocalDate birthDate, String role,
+            String status, String position, Long soonId, String soonName, boolean hasAccount,
+            Set<MemberRole> memberRoles, String userPhone, String email, String profileImageUrl) {
         this.userId = userId;
         this.loginId = loginId;
         this.name = name;
@@ -39,8 +44,11 @@ public class MyInfoResponseDto {
         this.status = status;
         this.soonId = soonId;
         this.soonName = soonName;
-        this.memberRoles= memberRoles;
+        this.memberRoles = memberRoles;
         this.hasAccount = hasAccount;
+        this.userPhone = userPhone;
+        this.email = email;
+        this.profileImageUrl = profileImageUrl;
     }
 
     // 1. [관리자용] Member 정보가 없을 때 생성하는 메소드
@@ -50,6 +58,9 @@ public class MyInfoResponseDto {
                 .loginId(user.getLoginId())
                 .name("관리자") // 또는 user.getLoginId()
                 .phone(null)
+                .userPhone(user.getPhone())
+                .email(user.getEmail())
+                .profileImageUrl(user.getProfileImageUrl())
                 .birthDate(null)
                 .role(user.getUserRole().name())
                 .status("ACTIVE") // 시스템 상 활성 상태
@@ -67,6 +78,9 @@ public class MyInfoResponseDto {
                 .loginId(user.getLoginId())
                 .name(member.getName())
                 .phone(member.getPhone())
+                .userPhone(user.getPhone())
+                .email(user.getEmail())
+                .profileImageUrl(user.getProfileImageUrl())
                 .birthDate(member.getBirthDate())
                 .role(user.getUserRole().name())
                 .status(member.getMemberStatus().name())

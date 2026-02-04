@@ -10,6 +10,7 @@ public class BoardCreateRequestDto {
     private String boardKey;
     private String description;
     private BoardAccessType accessType;
+    private BoardAccessType writeAccessType;
     private Long clubId;
     private boolean isAlwaysSecret;
 }

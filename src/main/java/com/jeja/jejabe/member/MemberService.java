@@ -7,14 +7,15 @@ import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.member.domain.MemberStatus;
 import com.jeja.jejabe.member.dto.MemberCreateRequestDto;
 import com.jeja.jejabe.member.dto.MemberDto;
+import com.jeja.jejabe.member.dto.MemberStatisticsResponse;
 import com.jeja.jejabe.member.dto.MemberUpdateRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,13 +29,14 @@ public class MemberService {
 
 
     @Transactional(readOnly = true)
-    public Page<MemberDto> getMembers(String keyword, Pageable pageable) {
+    public Page<MemberDto> getMembers(String keyword, MemberStatus status, Boolean hasAccount, MemberRole role,
+            Pageable pageable) {
 
         // 제외할 상태 목록 정의 (INACTIVE, SYSTEM)
         List<MemberStatus> excludedStatuses = List.of(MemberStatus.INACTIVE, MemberStatus.SYSTEM);
 
         // Repository 호출 시 리스트 전달
-        return memberRepository.findAllByKeyword(keyword, excludedStatuses, pageable)
+        return memberRepository.findAllByKeywordAndStatus(keyword, status, excludedStatuses, hasAccount, role, pageable)
                 .map(MemberDto::new);
     }
 
@@ -56,6 +58,7 @@ public class MemberService {
                 .memberStatus(requestDto.getMemberStatus())
                 .role(MemberRole.MEMBER)
                 .gender(requestDto.getGender())
+                .memberImageUrl(requestDto.getMemberImageUrl())
                 .build();
 
         Member savedMember = memberRepository.save(newMember);
@@ -87,9 +90,44 @@ public class MemberService {
         memberRepository.deleteById(memberId);
     }
 
+    public MemberStatisticsResponse getStatistics() {
+        // 1. 제외할 상태 목록 정의 (여기서 관리하니 더 명확함)
+        List<MemberStatus> excludedStatuses = List.of(MemberStatus.SYSTEM, MemberStatus.INACTIVE);
+
+        // 2. 파라미터로 전달하여 조회
+        List<Object[]> results = memberRepository.countMembersGroupedByMemberStatus(excludedStatuses);
+
+        long activeCount = 0;
+        long newcomerCount = 0;
+        long inactiveCount = 0;
+
+        for (Object[] result : results) {
+            MemberStatus status = (MemberStatus) result[0];
+            long count = (Long) result[1];
+
+            switch (status) {
+                case ACTIVE -> activeCount += count;
+                case NEWCOMER -> newcomerCount += count;
+                case LONG_TERM_ABSENT, MOVED -> inactiveCount += count;
+                default -> {}
+            }
+        }
+
+        long totalCount = activeCount + newcomerCount + inactiveCount;
+
+        return MemberStatisticsResponse.builder()
+                .totalCount(totalCount)
+                .activeCount(activeCount)
+                .inactiveCount(inactiveCount)
+                .newcomerCount(newcomerCount)
+                .build();
+    }
+
     @Transactional(readOnly = true)
-    public List<MemberDto> getUnassignedMembers() {
-        return memberRepository.findUnassignedMembers().stream()
+    public List<MemberDto> getUnassignedMembers(Integer year) {
+        int targetYear = (year != null) ? year : LocalDate.now().getYear();
+
+        return memberRepository.findUnassignedMembersByYear(targetYear).stream()
                 .map(MemberDto::new)
                 .collect(Collectors.toList());
     }

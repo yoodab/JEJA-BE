@@ -1,5 +1,10 @@
 package com.jeja.jejabe.form.domain;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jeja.jejabe.form.dto.QuestionSnapshot;
+import com.jeja.jejabe.global.entity.BaseTimeEntity;
 import com.jeja.jejabe.member.domain.Member;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -14,9 +19,10 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class FormSubmission {
+public class FormSubmission extends BaseTimeEntity {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -43,7 +49,7 @@ public class FormSubmission {
 
     @Builder
     public FormSubmission(FormTemplate template, Member submitter, String guestName, String guestPhone,
-                          LocalDate submitDate, LocalDate targetSundayDate, Long targetCellId, Long targetClubId) {
+            LocalDate submitDate, LocalDate targetSundayDate, Long targetCellId, Long targetClubId) {
         this.template = template;
         this.submitter = submitter;
         this.guestName = guestName;
@@ -59,6 +65,11 @@ public class FormSubmission {
         this.answers.add(answer);
     }
 
-    public void approve() { this.status = SubmissionStatus.APPROVED; }
-    public void reject() { this.status = SubmissionStatus.REJECTED; }
+    public void approve() {
+        this.status = SubmissionStatus.APPROVED;
+    }
+
+    public void reject() {
+        this.status = SubmissionStatus.REJECTED;
+    }
 }

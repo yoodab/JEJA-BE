@@ -34,6 +34,9 @@ public class AbsenceCare extends BaseTimeEntity {
     private LocalDate startDate; // 관리 시작일
     private LocalDate endDate;   // 관리 종료일 (정착 완료일)
 
+    @Column(length = 500)
+    private String closingNote;
+
     @Builder
     public AbsenceCare(Member member, LocalDate lastAttendanceDate, int consecutiveAbsenceWeeks, CareStatus status, LocalDate startDate) {
         this.member = member;
@@ -59,8 +62,20 @@ public class AbsenceCare extends BaseTimeEntity {
         this.manager = manager;
     }
 
-    public void completeCare() {
+    public void completeCare(String closingNote) {
         this.status = CareStatus.COMPLETED;
         this.endDate = LocalDate.now();
+        this.closingNote = closingNote;
     }
+
+    public void stopCare(String closingNote) {
+        this.status = CareStatus.CARE_STOPPED;
+        this.endDate = LocalDate.now();
+        this.closingNote = closingNote;
+    }
+
+//    public void completeCare() {
+//        this.status = CareStatus.COMPLETED;
+//        this.endDate = LocalDate.now();
+//    }
 }

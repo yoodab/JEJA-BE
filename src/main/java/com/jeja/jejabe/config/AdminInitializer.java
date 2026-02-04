@@ -13,7 +13,6 @@ import com.jeja.jejabe.club.ClubType;
 import com.jeja.jejabe.member.MemberRepository;
 import com.jeja.jejabe.member.domain.Member;
 import com.jeja.jejabe.member.domain.MemberStatus;
-import com.jeja.jejabe.schedule.WorshipCategoryRepository;
 import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -30,7 +29,6 @@ public class AdminInitializer implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final BoardRepository boardRepository;
     private final ClubRepository clubRepository;
-    private final WorshipCategoryRepository worshipCategoryRepository;
 
 
     @Override
@@ -47,13 +45,12 @@ public class AdminInitializer implements CommandLineRunner {
 
         // 3. 필수 시스템 팀 생성 (새신자 관리 등을 위해 필요)
         createClubIfNeeded("새신자팀", "새신자를 환영하고 정착을 돕는 팀입니다.", ClubType.NEW_BELIEVER, null);
-        createClubIfNeeded("예배팀", "예배 순서를 기획하고 준비하는 팀입니다.", ClubType.WORSHIP, null);
+        createClubIfNeeded("예배팀", "예배 순서를 기획하고 준비하는 팀입니다.", ClubType.SERVICE, null);
         createClubIfNeeded("방송팀", "음향 및 영상 송출을 담당합니다.", ClubType.BROADCAST, null);
+        createClubIfNeeded("찬양팀", "악기 연주와 노래로 예배 찬양을 인도합니다.", ClubType.WORSHIP, null);
+        createClubIfNeeded("컨텐츠팀", "행사 사진/영상 촬영 및 미디어 컨텐츠를 제작합니다.", ClubType.CONTENT, null);
+        createClubIfNeeded("디자인팀", "주보, 포스터, 현수막 등 시각 디자인을 담당합니다.", ClubType.DESIGN, null);
 
-        // 4. 예배 카테고리 생성 (출석 체크 및 일정 등록용)
-        createWorshipCategoryIfNeeded("주일 청년부 예배");
-        createWorshipCategoryIfNeeded("주일 3부 대예배");
-        createWorshipCategoryIfNeeded("금요 기도회");
     }
 
     private Member createAdminIfNeeded() {
@@ -99,19 +96,11 @@ public class AdminInitializer implements CommandLineRunner {
                     .description(desc)
                     .type(type)
                     .leader(leader)
-                    .meetingPlace("청년부실")
                     .build();
             clubRepository.save(club);
             System.out.println(">>> [INIT] 시스템 팀 생성 완료: " + name);
         }
     }
 
-    private void createWorshipCategoryIfNeeded(String name) {
-        if (worshipCategoryRepository.findAll().stream().noneMatch(c -> c.getName().equals(name))) {
-            WorshipCategory category = new WorshipCategory(name);
-            worshipCategoryRepository.save(category);
-            System.out.println(">>> [INIT] 예배 카테고리 생성 완료: " + name);
-        }
-    }
 
 }

@@ -3,15 +3,16 @@ package com.jeja.jejabe.schedule.dto;
 import com.jeja.jejabe.schedule.domain.RecurrenceRule;
 import com.jeja.jejabe.schedule.domain.ScheduleType;
 import com.jeja.jejabe.schedule.domain.SharingScope;
+import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
-@Setter
-public class ScheduleRequestDto {
+@NoArgsConstructor
+public class ScheduleUpdateRequestDto {
     private String title;
     private String content;
     private LocalDateTime startDate;
@@ -21,6 +22,12 @@ public class ScheduleRequestDto {
     private SharingScope sharingScope;
     private RecurrenceRule recurrenceRule;
     private LocalDate recurrenceEndDate;
+    private WorshipCategory worshipCategory;
 
-    private Long worshipCategoryId;
+    // 어떤 방식으로 수정할지 결정 (ALL, FUTURE, THIS_ONLY)
+    private UpdateType updateType;
+
+    // 반복 일정 중 사용자가 클릭한 날짜 (수정 기준일)
+    private LocalDate targetDate;
+
 }

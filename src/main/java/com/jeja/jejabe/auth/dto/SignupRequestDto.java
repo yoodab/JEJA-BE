@@ -13,4 +13,5 @@ public class SignupRequestDto {
     private String name;
     private String phone;
     private LocalDate birthDate;
+    private String email;
 }

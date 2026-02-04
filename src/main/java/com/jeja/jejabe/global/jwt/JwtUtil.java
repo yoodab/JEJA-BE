@@ -19,7 +19,8 @@ public class JwtUtil {
 
     public static final String AUTHORIZATION_HEADER = "Authorization";
     public static final String BEARER_PREFIX = "Bearer ";
-    private final long TOKEN_TIME = 60 * 60 * 1000L; // 1시간
+    private final long TOKEN_TIME = 60 * 60 * 100000L; // 1시간
+    private final long REFRESH_TOKEN_TIME = 7 * 24 * 60 * 60 * 1000L; // 7일
 
     @Value("${jwt.secret.key}") // application.yml에 정의된 secret key
     private String secretKey;
@@ -36,14 +37,25 @@ public class JwtUtil {
     public String createToken(String loginId, String role) {
         Date date = new Date();
 
-        return BEARER_PREFIX +
-                Jwts.builder()
-                        .setSubject(loginId) // 사용자 식별 값(ID)
-                        .claim("auth", role) // 사용자 권한
-                        .setExpiration(new Date(date.getTime() + TOKEN_TIME)) // 만료 시간
-                        .setIssuedAt(date) // 발급일
-                        .signWith(key, signatureAlgorithm) // 암호화 알고리즘
-                        .compact();
+        return Jwts.builder()
+                .setSubject(loginId) // 사용자 식별 값(ID)
+                .claim("auth", role) // 사용자 권한
+                .setExpiration(new Date(date.getTime() + TOKEN_TIME)) // 만료 시간
+                .setIssuedAt(date) // 발급일
+                .signWith(key, signatureAlgorithm) // 암호화 알고리즘
+                .compact();
+    }
+
+    // Refresh Token 생성
+    public String createRefreshToken(String loginId) {
+        Date date = new Date();
+
+        return Jwts.builder()
+                .setSubject(loginId)
+                .setExpiration(new Date(date.getTime() + REFRESH_TOKEN_TIME))
+                .setIssuedAt(date)
+                .signWith(key, signatureAlgorithm)
+                .compact();
     }
 
     // Header에서 JWT 가져오기

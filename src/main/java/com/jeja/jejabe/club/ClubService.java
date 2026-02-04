@@ -5,6 +5,7 @@ import com.jeja.jejabe.auth.UserRole;
 import com.jeja.jejabe.club.dto.ClubCreateRequestDto;
 import com.jeja.jejabe.club.dto.ClubDetailResponseDto;
 import com.jeja.jejabe.club.dto.ClubResponseDto;
+import com.jeja.jejabe.club.dto.ClubUpdateRequestDto;
 import com.jeja.jejabe.global.exception.CommonErrorCode;
 import com.jeja.jejabe.global.exception.GeneralException;
 import com.jeja.jejabe.member.domain.Member;
@@ -33,8 +34,6 @@ public class ClubService {
         Club club = Club.builder()
                 .name(dto.getName())
                 .description(dto.getDescription())
-                .meetingTime(dto.getMeetingTime())
-                .meetingPlace(dto.getMeetingPlace())
                 .type(dto.getType())
                 .leader(leader)
                 .build();
@@ -101,6 +100,56 @@ public class ClubService {
         }
 
         club.changeLeader(newLeader);
+    }
+
+    // 1. 팀 정보 수정 (관리자 or 팀장)
+    public void updateClub(Long clubId, ClubUpdateRequestDto dto, User user) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new IllegalArgumentException("팀을 찾을 수 없습니다."));
+
+        // 권한 체크 (관리자이거나 해당 팀의 팀장만 가능)
+        validateLeaderOrAdmin(club, user);
+
+        club.updateInfo(
+                dto.getName(),
+                dto.getDescription()
+        );
+    }
+
+    // 2. 팀 삭제 (관리자 전용)
+    public void deleteClub(Long clubId) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new IllegalArgumentException("팀을 찾을 수 없습니다."));
+
+        // Cascade 설정이 되어 있다면 ClubMember도 같이 삭제됨
+        clubRepository.delete(club);
+    }
+
+    // 3. 멤버 직접 추가 (관리자 or 팀장)
+    public void addMember(Long clubId, Long memberId, User user) {
+        Club club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new IllegalArgumentException("팀을 찾을 수 없습니다."));
+
+        validateLeaderOrAdmin(club, user);
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        // 이미 가입된 멤버인지 확인
+        if (clubMemberRepository.existsByClubAndMember(club, member)) {
+            throw new IllegalArgumentException("이미 해당 팀에 소속된 멤버입니다.");
+        }
+
+        // 멤버 저장
+        ClubMember clubMember = new ClubMember(club, member);
+        clubMemberRepository.save(clubMember);
+    }
+    @Transactional(readOnly = true)
+    public ClubDetailResponseDto getClubByType(ClubType type) {
+        Club club = clubRepository.findByType(type)
+                .orElseThrow(() -> new IllegalArgumentException("해당 타입의 팀이 존재하지 않습니다. type: " + type));
+
+        return new ClubDetailResponseDto(club);
     }
 
     // 권한 체크 헬퍼

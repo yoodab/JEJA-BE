@@ -8,6 +8,7 @@ import lombok.Getter;
 public class AttendanceRecordDto {
     private Long memberId;
     private String name;
+    private String phone;
     private boolean attended;
     private String attendanceTime;
 }

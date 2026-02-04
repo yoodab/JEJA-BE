@@ -4,7 +4,9 @@ import com.jeja.jejabe.auth.UserDetailsImpl;
 import com.jeja.jejabe.club.dto.ClubCreateRequestDto;
 import com.jeja.jejabe.club.dto.ClubDetailResponseDto;
 import com.jeja.jejabe.club.dto.ClubResponseDto;
+import com.jeja.jejabe.club.dto.ClubUpdateRequestDto;
 import com.jeja.jejabe.form.FormService;
+import com.jeja.jejabe.form.dto.ClubSubmissionResponseDto;
 import com.jeja.jejabe.form.dto.MySubmissionResponseDto;
 import com.jeja.jejabe.global.response.ApiResponseForm;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +26,7 @@ public class ClubController {
     private final FormService formService;
 
     @GetMapping("/clubs/{clubId}/applications")
-    public ResponseEntity<ApiResponseForm<List<MySubmissionResponseDto>>> getClubApplications(
+    public ResponseEntity<ApiResponseForm<List<ClubSubmissionResponseDto>>> getClubApplications(
             @PathVariable Long clubId,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         // 권한 체크 로직 (팀장 or 관리자) 필요 -> Service에서 수행
@@ -71,4 +73,37 @@ public class ClubController {
         clubService.changeLeader(clubId, newLeaderId, userDetails.getUser());
         return ResponseEntity.ok(ApiResponseForm.success("팀장 변경 완료"));
     }
+
+    @PatchMapping("/clubs/{clubId}")
+    public ResponseEntity<ApiResponseForm<Void>> updateClub(
+            @PathVariable Long clubId,
+            @RequestBody ClubUpdateRequestDto requestDto,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        clubService.updateClub(clubId, requestDto, userDetails.getUser());
+        return ResponseEntity.ok(ApiResponseForm.success(null));
+    }
+
+    @DeleteMapping("/admin/clubs/{clubId}")
+    public ResponseEntity<ApiResponseForm<Void>> deleteClub(@PathVariable Long clubId) {
+        clubService.deleteClub(clubId);
+        return ResponseEntity.ok(ApiResponseForm.success(null));
+    }
+
+    @PostMapping("/clubs/{clubId}/members")
+    public ResponseEntity<ApiResponseForm<Void>> addMember(
+            @PathVariable Long clubId,
+            @RequestBody Long memberId, // Body에 memberId (Long) 하나만 보냄
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        clubService.addMember(clubId, memberId, userDetails.getUser());
+        return ResponseEntity.ok(ApiResponseForm.success(null));
+    }
+
+    @GetMapping("/clubs/types/{clubType}")
+    public ResponseEntity<ApiResponseForm<ClubDetailResponseDto>> getClubByType(
+            @PathVariable ClubType clubType) {
+        return ResponseEntity.ok(ApiResponseForm.success(clubService.getClubByType(clubType)));
+    }
+
 }

@@ -17,8 +17,8 @@ public interface AlbumRepository extends JpaRepository<Album, Long> {
     // 4. 관리자라면(:isAdmin = true) 무조건 다 보임
     @Query("SELECT a FROM Album a WHERE " +
             "(:isAdmin = true) OR " +
-            "(a.readPermission = 'PUBLIC') OR " +
-            "(a.readPermission = 'MEMBERS_ONLY' AND :isMember = true)"+
+            "(a.readPermission = 'PUBLIC_READ') OR " +
+            "(a.readPermission = 'MEMBERS_ONLY_READ' AND :isMember = true)"+
             "ORDER BY a.createdAt DESC")
     Page<Album> findAllReadable(@Param("isMember") boolean isMember, @Param("isAdmin") boolean isAdmin, Pageable pageable);
 }

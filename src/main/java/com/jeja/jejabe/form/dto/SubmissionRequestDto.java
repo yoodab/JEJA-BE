@@ -11,6 +11,7 @@ public class SubmissionRequestDto {
     private LocalDate date;
     private Long cellId;
     private Long clubId;
+    private Long targetScheduleId;
     private String guestName;
     private String guestPhone;
     private List<AnswerDto> answers;

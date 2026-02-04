@@ -43,8 +43,14 @@ public class CareService {
     private final AttendanceRepository attendanceRepository;
     private final ScheduleRepository scheduleRepository;
 
-    // --- 배치: 자동 상태 판별 (매주 주일 밤 10시) ---
-    @Scheduled(cron = "0 0 22 * * SUN")
+
+    // [추가] 종료로 간주할 상태 목록 정의
+    private static final List<CareStatus> FINISHED_STATUSES = List.of(CareStatus.COMPLETED, CareStatus.CARE_STOPPED);
+
+
+    // --- 배치: 자동 상태 판별 ---
+    @Scheduled(cron = "0 0 22 * * SUN") // 매주 주일 밤 10시
+    // @Scheduled(cron = "0 * * * * *") // 테스트용
     public void updateAbsenceStatusBatch() {
         CareConfig config = careConfigRepository.findById(1L).orElse(new CareConfig());
         LocalDate today = LocalDate.now();
@@ -55,10 +61,13 @@ public class CareService {
             Optional<ScheduleAttendance> lastAttOpt = attendanceRepository.findTopByMemberOrderByAttendanceTimeDesc(member);
 
             if (lastAttOpt.isPresent()) {
-                LocalDate lastDate = lastAttOpt.get().getAttendanceTime().toLocalDate();
+                ScheduleAttendance lastAtt = lastAttOpt.get();
+                if (lastAtt.getAttendanceTime() == null) continue;
+
+                LocalDate lastDate = lastAtt.getAttendanceTime().toLocalDate();
                 int weeksAbsent = (int) ChronoUnit.WEEKS.between(lastDate, today);
 
-                Optional<AbsenceCare> activeCareOpt = absenceCareRepository.findActiveByMember(member);
+                Optional<AbsenceCare> activeCareOpt = absenceCareRepository.findByMemberAndStatusNotIn(member, FINISHED_STATUSES);
 
                 if (activeCareOpt.isPresent()) {
                     AbsenceCare care = activeCareOpt.get();
@@ -90,7 +99,8 @@ public class CareService {
         if (care.getStatus() == CareStatus.RESETTLING) {
             int consecutiveAttended = calculateConsecutiveAttendance(member);
             if (consecutiveAttended >= config.getResettlementWeeksThreshold()) {
-                care.completeCare(); // 완료 처리 (삭제 X)
+                // [수정] 배치 자동 완료 시 시스템 메시지 저장
+                care.completeCare("시스템 자동 완료: 정착 기준 충족 (" + consecutiveAttended + "주 연속 출석)");
             }
         } else {
             care.updateStatus(CareStatus.RESETTLING);
@@ -112,7 +122,7 @@ public class CareService {
 
     @Transactional(readOnly = true)
     public List<AbsenceCareResponseDto> getAllAbsentees() {
-        return absenceCareRepository.findAllActive().stream()
+        return absenceCareRepository.findAllByStatusNotIn(FINISHED_STATUSES).stream()
                 .map(care -> {
                     int attWeeks = 0;
                     if(care.getStatus() == CareStatus.RESETTLING) {
@@ -127,7 +137,8 @@ public class CareService {
     public AbsenceCareDetailDto getAbsenteeDetail(Long memberId) {
         Member member = memberRepository.findById(memberId).orElseThrow();
 
-        AbsenceCare currentCare = absenceCareRepository.findActiveByMember(member).orElse(null);
+        // 1. 현재 진행 중인 케어 조회
+        AbsenceCare currentCare = absenceCareRepository.findByMemberAndStatusNotIn(member, FINISHED_STATUSES).orElse(null);
         AbsenceCareResponseDto currentInfoDto = null;
         if (currentCare != null) {
             int attWeeks = 0;
@@ -137,7 +148,9 @@ public class CareService {
             currentInfoDto = new AbsenceCareResponseDto(currentCare, attWeeks);
         }
 
+        // 2. 히스토리 조회 (여기서 필터링!)
         List<AbsenceCareHistoryDto> history = absenceCareRepository.findAllByMemberOrderByStartDateDesc(member).stream()
+                .filter(care -> FINISHED_STATUSES.contains(care.getStatus()))
                 .map(AbsenceCareHistoryDto::new)
                 .collect(Collectors.toList());
 
@@ -160,35 +173,38 @@ public class CareService {
                 .build());
     }
 
+    // [수정] 케어 종료 처리 (정착 완료 or 케어 중단)
+    public void endCare(Long memberId, CareCompleteRequestDto dto) {
+        Member member = memberRepository.findById(memberId).orElseThrow();
+        AbsenceCare care = absenceCareRepository.findByMemberAndStatusNotIn(member, FINISHED_STATUSES)
+                .orElseThrow(() -> new IllegalArgumentException("진행 중인 케어가 없습니다."));
+
+        if ("STOPPED".equals(dto.getType())) {
+            care.stopCare(dto.getClosingNote());
+        } else {
+            care.completeCare(dto.getClosingNote());
+        }
+    }
+
+    public void updateCareLog(Long memberId, Long logId, CareLogCreateRequestDto dto) {
+        CareLog log = careLogRepository.findById(logId)
+                .orElseThrow(() -> new IllegalArgumentException("로그를 찾을 수 없습니다."));
+        log.update(dto.getContent(), dto.getCareMethod());
+    }
+
+    public void deleteCareLog(Long memberId, Long logId) {
+        CareLog log = careLogRepository.findById(logId)
+                .orElseThrow(() -> new IllegalArgumentException("로그를 찾을 수 없습니다."));
+        careLogRepository.delete(log);
+    }
+
+    // 통계에 종료 상태 제외 로직은 필요에 따라 조정 (현재는 status별 count)
     public Map<String, Long> getCareSummary() {
         Map<String, Long> summary = new HashMap<>();
         summary.put("needsAttention", absenceCareRepository.countByStatus(CareStatus.NEEDS_ATTENTION));
         summary.put("longTermAbsence", absenceCareRepository.countByStatus(CareStatus.LONG_TERM_ABSENCE));
         summary.put("resettling", absenceCareRepository.countByStatus(CareStatus.RESETTLING));
         return summary;
-    }
-
-    // [추가] 케어 완료 처리
-    public void completeCare(Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow();
-        AbsenceCare care = absenceCareRepository.findActiveByMember(member)
-                .orElseThrow(() -> new IllegalArgumentException("진행 중인 케어가 없습니다."));
-        care.completeCare(); // 엔티티 메소드 호출
-    }
-
-    // [추가] 케어 로그 수정
-    public void updateCareLog(Long memberId, Long logId, CareLogCreateRequestDto dto) {
-        CareLog log = careLogRepository.findById(logId)
-                .orElseThrow(() -> new IllegalArgumentException("로그를 찾을 수 없습니다."));
-        // 본인 작성 여부 체크 로직 추가 가능
-        log.update(dto.getContent(), dto.getCareMethod()); // 엔티티에 update 메소드 필요
-    }
-
-    // [추가] 케어 로그 삭제
-    public void deleteCareLog(Long memberId, Long logId) {
-        CareLog log = careLogRepository.findById(logId)
-                .orElseThrow(() -> new IllegalArgumentException("로그를 찾을 수 없습니다."));
-        careLogRepository.delete(log);
     }
 
     public void updateConfig(CareConfigDto dto) {
@@ -212,7 +228,7 @@ public class CareService {
     public void updateManager(Long memberId, Long newManagerId) {
         Member member = memberRepository.findById(memberId).orElseThrow();
         Member manager = memberRepository.findById(newManagerId).orElseThrow();
-        AbsenceCare care = absenceCareRepository.findActiveByMember(member).orElseThrow();
+        AbsenceCare care = absenceCareRepository.findByMemberAndStatusNotIn(member, FINISHED_STATUSES).orElseThrow();
         care.changeManager(manager);
     }
 }
