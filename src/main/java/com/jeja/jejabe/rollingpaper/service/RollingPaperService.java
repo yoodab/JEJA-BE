@@ -57,4 +57,18 @@ public class RollingPaperService {
                 .orElseThrow(() -> new IllegalArgumentException("RollingPaper not found with id: " + rollingPaperId));
         return stickerRepository.save(requestDto.toEntity(rollingPaper)).getId();
     }
+
+    @Transactional
+    public void updateRollingPaper(Long id, RollingPaperCreateRequestDto requestDto) {
+        RollingPaper rollingPaper = rollingPaperRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("RollingPaper not found with id: " + id));
+        rollingPaper.update(requestDto.getTitle(), requestDto.getTheme(), requestDto.getBackgroundConfig());
+    }
+
+    @Transactional
+    public void deleteRollingPaper(Long id) {
+        RollingPaper rollingPaper = rollingPaperRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("RollingPaper not found with id: " + id));
+        rollingPaperRepository.delete(rollingPaper);
+    }
 }

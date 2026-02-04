@@ -47,4 +47,18 @@ public class RollingPaperController {
     public ResponseEntity<Long> addSticker(@PathVariable Long id, @RequestBody StickerCreateRequestDto requestDto) {
         return ResponseEntity.ok(rollingPaperService.addSticker(id, requestDto));
     }
+
+    // Admin: Update
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> updateRollingPaper(@PathVariable Long id, @RequestBody RollingPaperCreateRequestDto requestDto) {
+        rollingPaperService.updateRollingPaper(id, requestDto);
+        return ResponseEntity.ok().build();
+    }
+
+    // Admin: Delete
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRollingPaper(@PathVariable Long id) {
+        rollingPaperService.deleteRollingPaper(id);
+        return ResponseEntity.ok().build();
+    }
 }
