@@ -372,20 +372,23 @@ public class AttendanceService {
 
     @Transactional(readOnly = true)
     public MyAttendanceStatResponseDto getMyAttendanceStats(Member member) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate today = LocalDate.now();
 
         // 이번 달
-        LocalDateTime startOfMonth = now.withDayOfMonth(1).toLocalDate().atStartOfDay();
-        int thisMonth = attendanceRepository.countByMemberAndAttendanceTimeBetween(member, startOfMonth, now);
+        LocalDate startOfMonth = today.withDayOfMonth(1);
+        int thisMonth = attendanceRepository.countByMemberAndStatusAndScheduleDateBetween(
+                member, AttendanceStatus.PRESENT, startOfMonth, today);
 
         // 올해
-        LocalDateTime startOfYear = now.withDayOfYear(1).toLocalDate().atStartOfDay();
-        int thisYear = attendanceRepository.countByMemberAndAttendanceTimeBetween(member, startOfYear, now);
+        LocalDate startOfYear = today.withDayOfYear(1);
+        int thisYear = attendanceRepository.countByMemberAndStatusAndScheduleDateBetween(
+                member, AttendanceStatus.PRESENT, startOfYear, today);
 
-        // 최근 5개 날짜
-        List<String> recentDates = attendanceRepository.findTop5ByMemberOrderByAttendanceTimeDesc(member)
+        // 최근 5개 날짜 (scheduleDate 기준)
+        List<String> recentDates = attendanceRepository.findTop5ByMemberAndStatusOrderByScheduleDateDesc(
+                member, AttendanceStatus.PRESENT)
                 .stream()
-                .map(att -> att.getAttendanceTime().toLocalDate().toString())
+                .map(att -> att.getScheduleDate().toString())
                 .collect(Collectors.toList());
 
         return new MyAttendanceStatResponseDto(thisMonth, thisYear, recentDates);

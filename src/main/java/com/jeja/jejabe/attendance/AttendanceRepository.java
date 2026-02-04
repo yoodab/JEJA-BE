@@ -30,11 +30,11 @@ public interface AttendanceRepository extends JpaRepository<ScheduleAttendance, 
 
     Optional<ScheduleAttendance> findByScheduleAndMember(Schedule schedule, Member member);
 
-    // 특정 기간 동안의 출석 횟수 조회
-    int countByMemberAndAttendanceTimeBetween(Member member, LocalDateTime start, LocalDateTime end);
+    // 특정 멤버의 특정 기간 내 'PRESENT' 상태인 출석 횟수 (scheduleDate 기준)
+    int countByMemberAndStatusAndScheduleDateBetween(Member member, AttendanceStatus status, LocalDate start, LocalDate end);
 
-    // 최근 출석 기록 N개 조회
-    List<ScheduleAttendance> findTop5ByMemberOrderByAttendanceTimeDesc(Member member);
+    // 특정 멤버의 최근 'PRESENT' 상태인 출석 기록 5개 (scheduleDate 기준)
+    List<ScheduleAttendance> findTop5ByMemberAndStatusOrderByScheduleDateDesc(Member member, AttendanceStatus status);
 
     List<ScheduleAttendance> findAllBySchedule(Schedule schedule);
 
