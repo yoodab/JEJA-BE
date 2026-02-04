@@ -1,6 +1,8 @@
 package com.jeja.jejabe.config;
 
 import com.jeja.jejabe.auth.UserDetailsServiceImpl;
+import com.jeja.jejabe.global.exception.CustomAccessDeniedHandler;
+import com.jeja.jejabe.global.exception.CustomAuthenticationEntryPoint;
 import com.jeja.jejabe.global.jwt.JwtAuthenticationFilter;
 import com.jeja.jejabe.global.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,8 @@ public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsServiceImpl userDetailsService;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -46,16 +50,16 @@ public class SecurityConfig {
     @Bean
     public RoleHierarchy roleHierarchy() {
         return RoleHierarchyImpl.fromHierarchy("""
-            ROLE_ADMIN > ROLE_PASTOR
-            ROLE_ADMIN > ROLE_TEAM_LEADER
-            ROLE_ADMIN > ROLE_CELL_LEADER
-            ROLE_ADMIN > ROLE_EXECUTIVE
-            
-            ROLE_PASTOR > ROLE_USER
-            ROLE_TEAM_LEADER > ROLE_USER
-            ROLE_SOONJANG > ROLE_USER
-            ROLE_EXECUTIVE > ROLE_USER
-        """);
+                    ROLE_ADMIN > ROLE_PASTOR
+                    ROLE_ADMIN > ROLE_TEAM_LEADER
+                    ROLE_ADMIN > ROLE_CELL_LEADER
+                    ROLE_ADMIN > ROLE_EXECUTIVE
+
+                    ROLE_PASTOR > ROLE_USER
+                    ROLE_TEAM_LEADER > ROLE_USER
+                    ROLE_SOONJANG > ROLE_USER
+                    ROLE_EXECUTIVE > ROLE_USER
+                """);
     }
 
     @Bean
@@ -66,12 +70,15 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
+                        .accessDeniedHandler(customAccessDeniedHandler))
                 .authorizeHttpRequests(authz -> authz
                         // 1. Swagger (API 문서)
                         .requestMatchers(SWAGGER_URL_PATTERNS).permitAll()
 
                         // 2. 인증/가입 관련
-                        .requestMatchers("/api/auth/signup", "/api/auth/login","/api/users/find-password").permitAll()
+                        .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/users/find-password").permitAll()
 
                         // 비밀번호 찾기
                         .requestMatchers(
@@ -80,18 +87,15 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/api/auth/send-verification-code",
                                 "/api/auth/verify-code",
-                                "/api/auth/reset-password"
-                        ).permitAll()
+                                "/api/auth/reset-password")
+                        .permitAll()
                         // 3. 출석 체크 (비로그인/공용 태블릿 사용 가능성 고려)
                         .requestMatchers("/api/schedule/*/check-in").permitAll()
-
-
                         .requestMatchers("/api/schedule/checkable").permitAll()
                         .requestMatchers("/api/attendance/guest").permitAll()
                         .requestMatchers("/api/newcomers/public").permitAll() // 새가족 온라인 등록
                         // 대시보드 일정 조회
                         .requestMatchers("/api/schedules/upcoming").permitAll()
-                        .requestMatchers("/api/albums").permitAll()
 
                         // 4. ★ 정적 리소스 및 파일 업로드 경로 (이미지 보기용)
                         .requestMatchers("/files/**").permitAll()
@@ -101,16 +105,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/homepage/**").permitAll()
 
                         // 6. ★ 게시판/게시글 조회 (GET 요청만 허용 -> 공개 게시판은 비로그인도 볼 수 있게)
-                        .requestMatchers(HttpMethod.GET, "/api/boards/**", "/api/posts/**", "/api/comments/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/boards/**", "/api/posts/**", "/api/comments/**")
+                        .permitAll()
 
                         // 7. 관리자 전용
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                         // 8. 그 외 모든 요청은 인증 필요
-                        .anyRequest().authenticated()
-                );
+                        .anyRequest().authenticated());
 
-        http.addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),
+                UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -120,7 +125,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // 프론트엔드 주소 허용
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173","https://jeja.shop","http://60.196.100.101","http://122.37.227.143:5173"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173",
+                "https://jeja.shop", "http://60.196.100.101", "http://122.37.227.143:5173"));
 
         // 허용할 HTTP 메서드
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
