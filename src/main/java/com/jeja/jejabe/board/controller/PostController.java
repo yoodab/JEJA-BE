@@ -30,8 +30,8 @@ public class PostController {
     @GetMapping("/boards/{boardId}")
     @PreAuthorize("@boardGuard.canReadBoard(principal, #boardKey)")
     public ResponseEntity<?> getPostsbyBoardId(@PathVariable Long boardId,
-                                               @RequestParam(required = false) String keyword,
-                                               Pageable pageable) {
+                                      @RequestParam(required = false) String keyword,
+                                      Pageable pageable) {
         return ResponseEntity.ok(ApiResponseForm.success(postService.getPostsByBoard(boardId, keyword, pageable), "목록 조회 성공"));
     }
 
