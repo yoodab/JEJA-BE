@@ -30,7 +30,7 @@ public class Club extends BaseTimeEntity {
     @Column(nullable = false)
     private ClubType type;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "leader_id")
     private Member leader;
 
