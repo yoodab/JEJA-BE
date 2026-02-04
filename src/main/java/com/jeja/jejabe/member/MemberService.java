@@ -29,13 +29,14 @@ public class MemberService {
 
 
     @Transactional(readOnly = true)
-    public Page<MemberDto> getMembers(String keyword, MemberStatus status, Pageable pageable) {
+    public Page<MemberDto> getMembers(String keyword, MemberStatus status, Boolean hasAccount, MemberRole role,
+            Pageable pageable) {
 
         // 제외할 상태 목록 정의 (INACTIVE, SYSTEM)
         List<MemberStatus> excludedStatuses = List.of(MemberStatus.INACTIVE, MemberStatus.SYSTEM);
 
         // Repository 호출 시 리스트 전달
-        return memberRepository.findAllByKeywordAndStatus(keyword, status, excludedStatuses, pageable)
+        return memberRepository.findAllByKeywordAndStatus(keyword, status, excludedStatuses, hasAccount, role, pageable)
                 .map(MemberDto::new);
     }
 

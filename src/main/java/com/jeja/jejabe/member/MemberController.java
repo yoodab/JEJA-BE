@@ -1,6 +1,7 @@
 package com.jeja.jejabe.member;
 
 import com.jeja.jejabe.global.response.ApiResponseForm;
+import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.member.domain.MemberStatus;
 import com.jeja.jejabe.member.dto.MemberCreateRequestDto;
 import com.jeja.jejabe.member.dto.MemberDto;
@@ -37,10 +38,12 @@ public class MemberController {
     public ResponseEntity<ApiResponseForm<Page<MemberDto>>> getMembers(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) MemberStatus status,
+            @RequestParam(required = false) Boolean hasAccount,
+            @RequestParam(required = false) MemberRole role,
             @PageableDefault(size = 20, sort = "name") Pageable pageable) {
-        return ResponseEntity.ok(ApiResponseForm.success(memberService.getMembers(keyword, status, pageable)));
+        return ResponseEntity
+                .ok(ApiResponseForm.success(memberService.getMembers(keyword, status, hasAccount, role, pageable)));
     }
-
 
     @GetMapping("/{memberId}")
     public ResponseEntity<ApiResponseForm<MemberDto>> getMemberById(@PathVariable Long memberId) {
@@ -55,7 +58,8 @@ public class MemberController {
 
     @PutMapping("/{memberId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR','EXECUTIVE')")
-    public ResponseEntity<ApiResponseForm<Void>> updateMember(@PathVariable Long memberId, @RequestBody MemberUpdateRequestDto requestDto) {
+    public ResponseEntity<ApiResponseForm<Void>> updateMember(@PathVariable Long memberId,
+            @RequestBody MemberUpdateRequestDto requestDto) {
         memberService.updateMember(memberId, requestDto);
         return ResponseEntity.ok(ApiResponseForm.success("멤버 정보가 성공적으로 수정되었습니다."));
     }

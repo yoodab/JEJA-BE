@@ -6,6 +6,7 @@ import com.jeja.jejabe.global.response.ApiResponseForm;
 import com.jeja.jejabe.schedule.domain.ScheduleType;
 import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import com.jeja.jejabe.schedule.dto.ScheduleResponseDto;
+import com.jeja.jejabe.user.dto.MyAttendanceHistoryResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -47,7 +48,7 @@ public class AttendanceController {
             @RequestBody ParticipationRequestDto requestDto,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        attendanceService.applyForSchedule(scheduleId, requestDto,userDetails);
+        attendanceService.applyForSchedule(scheduleId, requestDto, userDetails);
         return ResponseEntity.ok(ApiResponseForm.success("참석 신청이 완료되었습니다."));
     }
 
@@ -58,7 +59,7 @@ public class AttendanceController {
             @RequestBody ParticipationRequestDto requestDto,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        attendanceService.cancelApplication(scheduleId,requestDto, userDetails);
+        attendanceService.cancelApplication(scheduleId, requestDto, userDetails);
         return ResponseEntity.ok(ApiResponseForm.success("참석 신청이 취소되었습니다."));
     }
 
@@ -93,12 +94,20 @@ public class AttendanceController {
         return ResponseEntity.ok(ApiResponseForm.success(status));
     }
 
+    @GetMapping("/attendance/history")
+    public ResponseEntity<ApiResponseForm<MyAttendanceHistoryResponseDto>> getMyAttendanceHistory(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        MyAttendanceHistoryResponseDto history = attendanceService
+                .getMyAttendanceHistory(userDetails.getUser().getMember(), startDate, endDate);
+        return ResponseEntity.ok(ApiResponseForm.success(history));
+    }
 
     @GetMapping("/admin/schedules/{scheduleId}/attendance-sheet")
     public ResponseEntity<ApiResponseForm<AttendanceSheetResponseDto>> getAttendanceSheet(
             @PathVariable Long scheduleId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(ApiResponseForm.success(attendanceService.getAttendanceSheet(scheduleId, date)));
     }
 
@@ -107,13 +116,12 @@ public class AttendanceController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) Long cellId,
-            @RequestParam(required = false) List<ScheduleType> scheduleTypes,       // List로 변경
+            @RequestParam(required = false) List<ScheduleType> scheduleTypes, // List로 변경
             @RequestParam(required = false) List<WorshipCategory> worshipCategories // List로 변경
     ) {
 
         AttendanceStatisticsResponseDto result = attendanceService.getPeriodStatistics(
-                startDate, endDate, cellId, scheduleTypes, worshipCategories
-        );
+                startDate, endDate, cellId, scheduleTypes, worshipCategories);
         return ResponseEntity.ok(ApiResponseForm.success(result));
     }
 

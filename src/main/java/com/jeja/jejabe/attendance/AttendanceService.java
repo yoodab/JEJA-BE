@@ -29,6 +29,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import com.jeja.jejabe.user.dto.MyAttendanceHistoryResponseDto;
+import com.jeja.jejabe.user.dto.MyAttendanceRecordDto;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -392,6 +396,39 @@ public class AttendanceService {
                 .collect(Collectors.toList());
 
         return new MyAttendanceStatResponseDto(thisMonth, thisYear, recentDates);
+    }
+
+    @Transactional(readOnly = true)
+    public MyAttendanceHistoryResponseDto getMyAttendanceHistory(Member member, LocalDate startDate,
+            LocalDate endDate) {
+        List<ScheduleAttendance> records = attendanceRepository.findAllByMemberAndDateBetween(member, startDate,
+                endDate);
+
+        // 1. Convert to DTOs
+        List<MyAttendanceRecordDto> dtos = records.stream()
+                .map(att -> MyAttendanceRecordDto.builder()
+                        .date(att.getScheduleDate())
+                        .scheduleName(att.getSchedule().getTitle())
+                        .categoryName(att.getSchedule().getWorshipCategory() != null
+                                ? att.getSchedule().getWorshipCategory().getDescription()
+                                : "기타")
+                        .attendanceTime(att.getAttendanceTime())
+                        .build())
+                .collect(Collectors.toList());
+
+        // 2. Calculate Stats
+        Map<String, Integer> stats = new HashMap<>();
+        for (ScheduleAttendance att : records) {
+            String category = att.getSchedule().getWorshipCategory() != null
+                    ? att.getSchedule().getWorshipCategory().getDescription()
+                    : "기타";
+            stats.put(category, stats.getOrDefault(category, 0) + 1);
+        }
+
+        return MyAttendanceHistoryResponseDto.builder()
+                .stats(stats)
+                .records(dtos)
+                .build();
     }
 
     // [추가] 오늘 출석 여부 로직

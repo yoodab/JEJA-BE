@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 import java.util.List;
 
@@ -29,6 +31,15 @@ public class UserController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(ApiResponseForm.success(
                 attendanceService.getMyAttendanceStats(userDetails.getUser().getMember())));
+    }
+
+    @GetMapping("/me/attendance-history")
+    public ResponseEntity<ApiResponseForm<MyAttendanceHistoryResponseDto>> getMyAttendanceHistory(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(ApiResponseForm.success(
+                attendanceService.getMyAttendanceHistory(userDetails.getUser().getMember(), startDate, endDate)));
     }
 
     @GetMapping("/me")
