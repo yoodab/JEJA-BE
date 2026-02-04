@@ -17,50 +17,53 @@ import java.util.Optional;
 
 @Repository
 public interface MemberRepository extends JpaRepository<Member, Long> {
-    Optional<Member> findByNameAndBirthDate(String name, LocalDate birthDate);
+        Optional<Member> findByNameAndBirthDate(String name, LocalDate birthDate);
 
-    Optional<Member> findByNameAndPhone(String name, String phone);
-    // 특정 상태의 모든 멤버를 조회
-    List<Member> findAllByMemberStatus(MemberStatus status);
+        List<Member> findAllByNameAndBirthDate(String name, LocalDate birthDate);
 
-    Optional<Member> findByPhone(String phone);
-    Optional<Member> findByName(String name);
-    List<Member> findAllByMemberStatusNotIn(List<MemberStatus> inactive);
+        Optional<Member> findByNameAndPhone(String name, String phone);
 
-    // 미배정 인원 조회: 현재 활성화된 CellHistory가 없는 멤버
-    @Query("SELECT m FROM Member m " +
-            "WHERE m.memberStatus = 'ACTIVE' " +
-            "AND m.id NOT IN (" +
-            "SELECT h.member.id " +
-            "FROM MemberCellHistory h " +
-            "JOIN h.cell c " +
-            "WHERE c.year = :year " +
-            ")")
-    List<Member> findUnassignedMembersByYear(@Param("year") Integer year);
+        boolean existsByPhoneAndIdNot(String phone, Long id);
 
-    // 새신자팀(특정 클럽)에 속한 멤버 조회 (담당 MD 후보용)
-    @Query("SELECT cm.member FROM ClubMember cm WHERE cm.club.type = :clubType")
-    List<Member> findByClubType(@Param("clubType") ClubType clubType);
+        // 특정 상태의 모든 멤버를 조회
+        List<Member> findAllByMemberStatus(MemberStatus status);
 
+        Optional<Member> findByPhone(String phone);
 
+        Optional<Member> findByName(String name);
 
-    @Query("SELECT m.memberStatus, COUNT(m) " +
-            "FROM Member m " +
-            "WHERE m.memberStatus NOT IN :excludedStatuses  " +
-            "GROUP BY m.memberStatus")
-    List<Object[]> countMembersGroupedByMemberStatus(List<MemberStatus> excludedStatuses);
+        List<Member> findAllByName(String name);
 
+        List<Member> findAllByMemberStatusNotIn(List<MemberStatus> inactive);
 
-    @Query("SELECT m FROM Member m WHERE " +
-            "(:keyword IS NULL OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) " +
-            "AND (:status IS NULL OR m.memberStatus = :status) " +
-            "AND m.memberStatus NOT IN :excluded")
-    Page<Member> findAllByKeywordAndStatus(
-            @Param("keyword") String keyword,
-            @Param("status") MemberStatus status,
-            @Param("excluded") List<MemberStatus> excluded,
-            Pageable pageable
-    );
+        // 미배정 인원 조회: 현재 활성화된 CellHistory가 없는 멤버
+        @Query("SELECT m FROM Member m " +
+                        "WHERE m.memberStatus = 'ACTIVE' " +
+                        "AND m.id NOT IN (" +
+                        "SELECT h.member.id " +
+                        "FROM MemberCellHistory h " +
+                        "JOIN h.cell c " +
+                        "WHERE c.year = :year " +
+                        ")")
+        List<Member> findUnassignedMembersByYear(@Param("year") Integer year);
 
-    List<Member> findAllByName(String name);
+        // 새신자팀(특정 클럽)에 속한 멤버 조회 (담당 MD 후보용)
+        @Query("SELECT cm.member FROM ClubMember cm WHERE cm.club.type = :clubType")
+        List<Member> findByClubType(@Param("clubType") ClubType clubType);
+
+        @Query("SELECT m.memberStatus, COUNT(m) " +
+                        "FROM Member m " +
+                        "WHERE m.memberStatus NOT IN :excludedStatuses  " +
+                        "GROUP BY m.memberStatus")
+        List<Object[]> countMembersGroupedByMemberStatus(List<MemberStatus> excludedStatuses);
+
+        @Query("SELECT m FROM Member m WHERE " +
+                        "(:keyword IS NULL OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) " +
+                        "AND (:status IS NULL OR m.memberStatus = :status) " +
+                        "AND m.memberStatus NOT IN :excluded")
+        Page<Member> findAllByKeywordAndStatus(
+                        @Param("keyword") String keyword,
+                        @Param("status") MemberStatus status,
+                        @Param("excluded") List<MemberStatus> excluded,
+                        Pageable pageable);
 }

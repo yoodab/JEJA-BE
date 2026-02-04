@@ -44,22 +44,42 @@ public class User extends BaseTimeEntity {
     @Column(unique = true)
     private String email; // 이메일 필드 추가
 
+    @Column(length = 500)
+    private String profileImageUrl; // 유저 프로필 이미지 URL
+
+    private String phone;
+
     // 생성자나 빌더에도 email 추가 필요
     public void updatePassword(String newPassword) {
         this.password = newPassword;
+    }
+
+    public void updateEmail(String email) {
+        this.email = email;
+    }
+
+    public void updatePhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void updateProfileImage(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
     }
 
     // ========================================================================
     // 생성자 (Builder 패턴 사용)
     // ========================================================================
     @Builder // Builder 패턴을 위한 어노테이션
-    public User(String loginId, String password, UserRole userRole, UserStatus status, Member member, String email) {
+    public User(String loginId, String password, UserRole userRole, UserStatus status, Member member, String email,
+            String profileImageUrl,String phone) {
         this.loginId = loginId;
         this.password = password;
         this.userRole = userRole;
         this.status = status;
         this.member = member;
         this.email = email;
+        this.phone = phone;
+        this.profileImageUrl = profileImageUrl;
     }
 
     // ========================================================================

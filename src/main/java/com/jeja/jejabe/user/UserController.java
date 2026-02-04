@@ -7,6 +7,7 @@ import com.jeja.jejabe.global.exception.CommonErrorCode;
 import com.jeja.jejabe.global.exception.GeneralException;
 import com.jeja.jejabe.global.response.ApiResponseForm;
 import com.jeja.jejabe.user.dto.*;
+import com.jeja.jejabe.user.dto.MyInfoUpdateRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,8 +28,7 @@ public class UserController {
     public ResponseEntity<ApiResponseForm<MyAttendanceStatResponseDto>> getMyAttendanceStats(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(ApiResponseForm.success(
-                attendanceService.getMyAttendanceStats(userDetails.getUser().getMember())
-        ));
+                attendanceService.getMyAttendanceStats(userDetails.getUser().getMember())));
     }
 
     @GetMapping("/me")
@@ -41,18 +41,35 @@ public class UserController {
         return ResponseEntity.ok(ApiResponseForm.success(myInfo, "내 정보 조회 성공"));
     }
 
+    @PatchMapping("/me")
+    public ResponseEntity<ApiResponseForm<Void>> updateMyInfo(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody MyInfoUpdateRequestDto requestDto) {
+
+        userService.updateMyInfo(userDetails.getUser().getId(), requestDto);
+        return ResponseEntity.ok(ApiResponseForm.success("내 정보가 수정되었습니다."));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponseForm<Void>> withdraw(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestBody WithdrawRequestDto requestDto) {
+
+        userService.withdraw(userDetails.getUser().getId(), requestDto.getPassword());
+        return ResponseEntity.ok(ApiResponseForm.success("회원 탈퇴가 완료되었습니다."));
+    }
 
     /**
      * 사용자 목록 조회
-     * GET /api/users             -> 전체 조회
+     * GET /api/users -> 전체 조회
      * GET /api/users?status=PENDING -> 승인 대기자 조회
-     * GET /api/users?status=ACTIVE  -> 활동 중인 유저 조회
+     * GET /api/users?status=ACTIVE -> 활동 중인 유저 조회
      */
     @PreAuthorize("hasAnyRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponseForm<List<UserResponseDto>>> getUsers(
-            @RequestParam(value = "status", required = false) String statusStr,@AuthenticationPrincipal UserDetailsImpl userDetails
-    ) {
+            @RequestParam(value = "status", required = false) String statusStr,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         UserStatus status = null;
         if (statusStr != null && !statusStr.isEmpty()) {
             try {
@@ -62,14 +79,14 @@ public class UserController {
             }
         }
 
-        List<UserResponseDto> users = userService.getUsers(status,userDetails);
+        List<UserResponseDto> users = userService.getUsers(status, userDetails);
         return ResponseEntity.ok(ApiResponseForm.success(users, "사용자 목록 조회 성공"));
     }
 
     /**
      * 사용자 상태 변경
      * PATCH /api/users/{userId}/status
-     * Body: { "status": "ACTIVE" }  -> 승인
+     * Body: { "status": "ACTIVE" } -> 승인
      * Body: { "status": "REJECTED" } -> 거절
      */
     @PreAuthorize("hasAnyRole('ADMIN')")
@@ -77,18 +94,17 @@ public class UserController {
     public ResponseEntity<ApiResponseForm<Void>> updateUserStatus(
             @PathVariable Long userId,
             @RequestBody UserStatusUpdateDto requestDto,
-            @AuthenticationPrincipal UserDetailsImpl userDetails
-    ) {
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         if (requestDto.getStatus() == null) {
             throw new GeneralException(CommonErrorCode.BAD_REQUEST);
         }
 
-        userService.updateUserStatus(userId, requestDto.getStatus(),userDetails);
+        userService.updateUserStatus(userId, requestDto.getStatus(), userDetails);
 
         return ResponseEntity.ok(ApiResponseForm.success(
-                "사용자 상태가 " + requestDto.getStatus() + "(으)로 변경되었습니다."
-        ));
+                "사용자 상태가 " + requestDto.getStatus() + "(으)로 변경되었습니다."));
     }
+
     @PatchMapping("/admin/users/{userId}/password-reset")
     public ResponseEntity<ApiResponseForm<Void>> resetPassword(@PathVariable Long userId) {
         userService.resetPassword(userId, "1234");
