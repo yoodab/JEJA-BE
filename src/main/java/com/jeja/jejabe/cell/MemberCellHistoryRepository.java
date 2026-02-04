@@ -39,4 +39,7 @@ public interface MemberCellHistoryRepository extends JpaRepository<MemberCellHis
     @Query("UPDATE MemberCellHistory h SET h.isActive = true WHERE h.cell.year = :year")
     void activateHistoriesByYear(@Param("year") Integer year);
 
+    boolean existsByCell_YearAndIsActiveTrue(Integer year);
+
+    boolean existsByIsActiveTrue();
 }
