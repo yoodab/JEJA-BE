@@ -45,8 +45,11 @@ public class AdminInitializer implements CommandLineRunner {
 
         // 3. 필수 시스템 팀 생성 (새신자 관리 등을 위해 필요)
         createClubIfNeeded("새신자팀", "새신자를 환영하고 정착을 돕는 팀입니다.", ClubType.NEW_BELIEVER, null);
-        createClubIfNeeded("예배팀", "예배 순서를 기획하고 준비하는 팀입니다.", ClubType.WORSHIP, null);
+        createClubIfNeeded("예배팀", "예배 순서를 기획하고 준비하는 팀입니다.", ClubType.SERVICE, null);
         createClubIfNeeded("방송팀", "음향 및 영상 송출을 담당합니다.", ClubType.BROADCAST, null);
+        createClubIfNeeded("찬양팀", "악기 연주와 노래로 예배 찬양을 인도합니다.", ClubType.WORSHIP, null);
+        createClubIfNeeded("컨텐츠팀", "행사 사진/영상 촬영 및 미디어 컨텐츠를 제작합니다.", ClubType.CONTENT, null);
+        createClubIfNeeded("디자인팀", "주보, 포스터, 현수막 등 시각 디자인을 담당합니다.", ClubType.DESIGN, null);
 
     }
 
