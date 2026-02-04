@@ -10,6 +10,8 @@ jobs:
 
     steps:
       - name: Execute Deploy Script
+        env:
+          ENV_CONTENTS: ${{ secrets.ENV_FILE }}
         run: |
           echo ">>> 1. 백엔드 폴더로 이동"
           cd /home/dabin/backend
@@ -20,11 +22,11 @@ jobs:
           git pull origin main
           chmod +x gradlew
 
-          echo ">>> 3. .env 파일 생성 (GitHub Secrets 적용)
-          # 시크릿(ENV_FILE) 내용을 가져와서 .env 파일로 덮어쓰기
-          echo "${{ secrets.ENV_FILE }}" > .env
+          echo ">>> 3. .env 파일 생성 (GitHub Secrets 적용)"
+          # 환경변수 내용을 .env 파일로 저장
+          echo "$ENV_CONTENTS" > .env
           
-          # 파일이 잘 만들어졌는지 확인 (내용은 보안상 안 보여줌)
+          # 파일이 잘 만들어졌는지 확인
           if [ -f ".env" ]; then
             echo ".env 파일 생성 성공!"
           else
