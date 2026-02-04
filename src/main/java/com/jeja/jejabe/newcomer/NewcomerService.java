@@ -9,6 +9,8 @@ import com.jeja.jejabe.member.domain.MemberStatus;
 import com.jeja.jejabe.newcomer.domain.Newcomer;
 import com.jeja.jejabe.newcomer.domain.NewcomerStatus;
 import com.jeja.jejabe.newcomer.dto.*;
+import com.jeja.jejabe.auth.UserRepository;
+import com.jeja.jejabe.notification.service.FcmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +27,8 @@ public class NewcomerService {
 
     private final NewcomerRepository newcomerRepository;
     private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
+    private final FcmService fcmService;
 
     // 1. 목록 조회 (연도 필터링 + 페이징)
     public Page<NewcomerListResponseDto> getNewcomerList(Integer year, NewcomerStatus status, Pageable pageable) {
@@ -47,7 +51,8 @@ public class NewcomerService {
 
             if (status != null) {
                 // 상태 + 날짜 조건
-                pageResult = newcomerRepository.findAllByStatusAndRegistrationDateBetween(status, startDate, endDate, pageable);
+                pageResult = newcomerRepository.findAllByStatusAndRegistrationDateBetween(status, startDate, endDate,
+                        pageable);
             } else {
                 // 날짜 조건만
                 pageResult = newcomerRepository.findAllByRegistrationDateBetween(startDate, endDate, pageable);
@@ -71,6 +76,7 @@ public class NewcomerService {
                 .phone(dto.getPhone())
                 .address(dto.getAddress())
                 .manager(manager)
+                .firstStatus(dto.getFirstStatus())
                 .managerName(manager != null ? manager.getName() : null)
                 .isChurchRegistered(dto.getIsChurchRegistered() != null && dto.getIsChurchRegistered())
                 .build();
@@ -90,7 +96,6 @@ public class NewcomerService {
 
             LocalDate parsedBirthDate = parseDateSafe(dto.getBirthDate());
             LocalDate parsedRegDate = parseDateSafe(dto.getRegistrationDate());
-
 
             Newcomer newcomer = Newcomer.builder()
                     .name(dto.getName())
@@ -112,6 +117,11 @@ public class NewcomerService {
             }
 
             newcomerRepository.save(newcomer);
+
+            // Send notification to manager
+            if (manager != null) {
+                sendManagerAssignmentNotification(manager, newcomer.getName());
+            }
         }
     }
 
@@ -123,12 +133,28 @@ public class NewcomerService {
         if (dto.getManagerMemberId() != null) {
             newManager = findMemberById(dto.getManagerMemberId());
         }
+
+        Member oldManager = newcomer.getManager();
+
         newcomer.updateInfo(
                 dto.getAddress(), dto.getPhone(), dto.getAssignmentNote(),
                 dto.getFirstStatus(), dto.getMiddleStatus(), dto.getRecentStatus(),
                 dto.getProfileImageUrl(), newManager, dto.getBirthDate(),
-                dto.getIsChurchRegistered(),dto.getGender(),dto.getCellName()
-        );
+                dto.getIsChurchRegistered(), dto.getGender(), dto.getCellName());
+
+        // Send notification if manager changed or assigned
+        if (newManager != null && (oldManager == null || !oldManager.getId().equals(newManager.getId()))) {
+            sendManagerAssignmentNotification(newManager, newcomer.getName());
+        }
+    }
+
+    private void sendManagerAssignmentNotification(Member manager, String newcomerName) {
+        try {
+            userRepository.findByMember(manager).ifPresent(user -> fcmService.sendNotificationToUser(user.getId(),
+                    "새신자 담당 알림", newcomerName + "님이 담당 새신자로 배정되었습니다."));
+        } catch (Exception e) {
+            System.err.println("Failed to send notification: " + e.getMessage());
+        }
     }
 
     // 5. 등반 / 상태변경 / 상세조회 Helper
@@ -178,7 +204,8 @@ public class NewcomerService {
     }
 
     private LocalDate parseDateSafe(String dateStr) {
-        if (dateStr == null || dateStr.isBlank()) return null;
+        if (dateStr == null || dateStr.isBlank())
+            return null;
         try {
             return LocalDate.parse(dateStr.trim());
         } catch (Exception e) {
