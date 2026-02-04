@@ -19,6 +19,7 @@ public enum CommonErrorCode implements ErrorCode {
     // 인증/인가 관련 에러 (Authentication & Authorization) - A0xx (Auth)
     // =================================================================
     // (참고: 아래 출석 에러코드 A0xx와 접두사가 겹치지만, 제공해주신 코드 기반으로 유지합니다)
+    LOGIN_REQUIRED("A000", "인증이 필요합니다. 로그인 해주세요.", HttpStatus.UNAUTHORIZED),
     INVALID_PASSWORD("A001", "아이디 또는 비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
     ACCOUNT_INACTIVE("A002", "관리자의 승인 대기 중인 사용자입니다.", HttpStatus.FORBIDDEN),
     DUPLICATE_LOGIN_ID("A003", "이미 사용 중인 아이디입니다.", HttpStatus.CONFLICT),
@@ -28,11 +29,15 @@ public enum CommonErrorCode implements ErrorCode {
     INVALID_AUTH_CODE("A007", "인증번호가 일치하지 않거나 만료되었습니다.", HttpStatus.BAD_REQUEST),
     EMAIL_NOT_VERIFIED("A008", "이메일 인증이 완료되지 않았습니다.", HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED("A009", "이메일 전송 중 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    DUPLICATE_USER_INFO("A010", "동명이인이 존재하여 식별할 수 없습니다. 관리자에게 문의하세요.", HttpStatus.CONFLICT),
+    INVALID_TOKEN("A011", "유효하지 않은 토큰입니다.", HttpStatus.UNAUTHORIZED),
 
     // =================================================================
     // 멤버(Member) 관리 관련 에러 - M0xx
     // =================================================================
     MEMBER_NOT_FOUND("M001", "멤버 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    INVALID_PHONE_FORMAT("M002", "잘못된 전화번호 형식입니다. (010-XXXX-XXXX)", HttpStatus.BAD_REQUEST),
+    DUPLICATE_PHONE("M003", "이미 사용 중인 전화번호입니다.", HttpStatus.CONFLICT),
 
     // =================================================================
     // 앨범(Album) 관리 관련 에러 - ALxx
