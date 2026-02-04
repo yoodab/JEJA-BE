@@ -27,6 +27,12 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponseForm.success(userInfo, "로그인 성공"));
     }
 
+    @PostMapping("/reissue")
+    public ResponseEntity<ApiResponseForm<TokenResponseDto>> reissue(@RequestBody TokenReissueRequestDto requestDto) {
+        TokenResponseDto tokenDto = authService.reissue(requestDto);
+        return ResponseEntity.ok(ApiResponseForm.success(tokenDto, "토큰이 재발급되었습니다."));
+    }
+
     @PostMapping("/send-verification-code")
     public ResponseEntity<ApiResponseForm<Void>> sendVerificationCode(@RequestBody VerificationCodeRequestDto requestDto) {
         authService.sendVerificationCode(requestDto.getLoginId(), requestDto.getEmail());
