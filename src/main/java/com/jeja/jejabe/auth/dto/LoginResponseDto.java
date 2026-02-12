@@ -1,12 +1,17 @@
 package com.jeja.jejabe.auth.dto;
 
 import com.jeja.jejabe.auth.User;
+import com.jeja.jejabe.member.domain.MemberRole;
 import lombok.Getter;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 public class LoginResponseDto {
     private final String name; // 청년 이름
     private final String role; // 사용자 권한 (e.g., "ROLE_ADMIN", "ROLE_LEADER")
+    private final Set<String> memberRoles; // 교인 직분 목록 (e.g., "TEAM_LEADER", "CELL_LEADER")
     private final String accessToken;
     private final String refreshToken;
 
@@ -14,6 +19,9 @@ public class LoginResponseDto {
     public LoginResponseDto(User user, String accessToken, String refreshToken) {
         this.name = user.getMember().getName(); // 연결된 Member 엔티티에서 이름을 가져옴
         this.role = user.getUserRole().name();
+        this.memberRoles = user.getMember().getRoles().stream()
+                .map(MemberRole::name)
+                .collect(Collectors.toSet());
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
     }

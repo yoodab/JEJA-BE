@@ -19,6 +19,7 @@ public class MyInfoResponseDto {
     private String userPhone;
     private String email;
     private String profileImageUrl;
+    private String memberImageUrl;
     private LocalDate birthDate;
 
     private String role;
@@ -34,7 +35,8 @@ public class MyInfoResponseDto {
     @Builder
     private MyInfoResponseDto(Long userId, String loginId, String name, String phone, LocalDate birthDate, String role,
             String status, String position, Long soonId, String soonName, boolean hasAccount,
-            Set<MemberRole> memberRoles, String userPhone, String email, String profileImageUrl) {
+            Set<MemberRole> memberRoles, String userPhone, String email, String profileImageUrl,
+            String memberImageUrl) {
         this.userId = userId;
         this.loginId = loginId;
         this.name = name;
@@ -49,6 +51,7 @@ public class MyInfoResponseDto {
         this.userPhone = userPhone;
         this.email = email;
         this.profileImageUrl = profileImageUrl;
+        this.memberImageUrl = memberImageUrl;
     }
 
     // 1. [관리자용] Member 정보가 없을 때 생성하는 메소드
@@ -61,6 +64,7 @@ public class MyInfoResponseDto {
                 .userPhone(user.getPhone())
                 .email(user.getEmail())
                 .profileImageUrl(user.getProfileImageUrl())
+                .memberImageUrl(null)
                 .birthDate(null)
                 .role(user.getUserRole().name())
                 .status("ACTIVE") // 시스템 상 활성 상태
@@ -81,6 +85,7 @@ public class MyInfoResponseDto {
                 .userPhone(user.getPhone())
                 .email(user.getEmail())
                 .profileImageUrl(user.getProfileImageUrl())
+                .memberImageUrl(member.getMemberImageUrl())
                 .birthDate(member.getBirthDate())
                 .role(user.getUserRole().name())
                 .status(member.getMemberStatus().name())
