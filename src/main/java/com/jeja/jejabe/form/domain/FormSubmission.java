@@ -44,7 +44,7 @@ public class FormSubmission extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private SubmissionStatus status;
 
-    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "submission", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<FormAnswer> answers = new ArrayList<>();
 
     @Builder
@@ -63,6 +63,11 @@ public class FormSubmission extends BaseTimeEntity {
 
     public void addAnswer(FormAnswer answer) {
         this.answers.add(answer);
+    }
+
+    public void updateTargetInfo(LocalDate targetSundayDate, Long targetCellId) {
+        this.targetSundayDate = targetSundayDate;
+        this.targetCellId = targetCellId;
     }
 
     public void approve() {

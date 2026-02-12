@@ -6,5 +6,7 @@ public enum QuestionType {
     SINGLE_CHOICE,  // 객관식 (라디오)
     MULTIPLE_CHOICE,// 체크박스
     NUMBER,         // 숫자
-    BOOLEAN         // 참/거짓 (스위치/체크박스)
+    BOOLEAN,        // 참/거짓 (스위치/체크박스)
+    WORSHIP_ATTENDANCE, // 예배 출석
+    SCHEDULE_ATTENDANCE // 일정 출석
 }

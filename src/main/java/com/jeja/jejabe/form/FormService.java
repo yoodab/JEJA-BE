@@ -7,6 +7,10 @@ import com.jeja.jejabe.auth.User;
 import com.jeja.jejabe.auth.UserRepository;
 import com.jeja.jejabe.auth.UserRole;
 import com.jeja.jejabe.notification.service.FcmService;
+import com.jeja.jejabe.cell.Cell;
+import com.jeja.jejabe.cell.CellRepository;
+import com.jeja.jejabe.cell.MemberCellHistory;
+import com.jeja.jejabe.cell.MemberCellHistoryRepository;
 import com.jeja.jejabe.club.Club;
 import com.jeja.jejabe.club.ClubMember;
 import com.jeja.jejabe.club.ClubMemberRepository;
@@ -25,6 +29,7 @@ import com.jeja.jejabe.schedule.domain.Schedule;
 import com.jeja.jejabe.schedule.ScheduleRepository;
 import com.jeja.jejabe.schedule.domain.ScheduleType;
 import com.jeja.jejabe.schedule.domain.WorshipCategory;
+import com.jeja.jejabe.schedule.util.RecurrenceCalculator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,6 +58,8 @@ public class FormService {
     private final ClubMemberRepository clubMemberRepository;
     private final FcmService fcmService;
     private final UserRepository userRepository;
+    private final CellRepository cellRepository;
+    private final MemberCellHistoryRepository memberCellHistoryRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // 1. 템플릿 생성
@@ -105,7 +114,7 @@ public class FormService {
         FormTemplate template = templateRepository.findById(dto.getTemplateId())
                 .orElseThrow(() -> new IllegalArgumentException("템플릿을 찾을 수 없습니다."));
 
-        if (user == null || user.getUserRole() != UserRole.ROLE_ADMIN) {
+        if (user == null || !user.isPrivileged()) {
             template.validateSubmissionTime();
         }
 
@@ -122,7 +131,7 @@ public class FormService {
         FormSubmission submission = FormSubmission.builder()
                 .template(template)
                 .submitter(submitter)
-                .submitDate(dto.getDate())
+                .submitDate(LocalDate.now()) // 프론트엔드 전달값 대신 서버 현재 날짜 사용
                 .targetSundayDate(targetSunday)
                 .targetCellId(dto.getCellId())
                 .targetClubId(dto.getClubId())
@@ -166,44 +175,107 @@ public class FormService {
      * 질문별 연동 설정(syncType)에 따라 출석 시스템에 데이터 반영
      */
     private void processAttendanceSync(FormSubmission submission, Long specificScheduleId) {
-        LocalDate targetDate = submission.getTargetSundayDate();
+        final LocalDate targetDate = submission.getTargetSundayDate() != null
+                ? submission.getTargetSundayDate()
+                : LocalDate.now();
 
-        // 사후 확정용 해당 주간 스케줄 로드
-        List<Schedule> weeklySchedules = Collections.emptyList();
-        if (targetDate != null) {
-            weeklySchedules = scheduleRepository.findByTypeAndStartDateBetween(
-                    ScheduleType.WORSHIP, targetDate.minusDays(6).atStartOfDay(), targetDate.atTime(23, 59, 59));
+        // 사후 확정용 검색 범위 설정
+        final LocalDateTime rangeStart;
+        final LocalDateTime rangeEnd;
+
+        if (submission.getTemplate().getCategory() == FormCategory.CELL_REPORT
+                && submission.getTargetSundayDate() != null) {
+            // 순 보고서의 경우: 해당 주간 (월요일 ~ 주일)
+            // targetDate가 주일이므로, 6일 전인 월요일부터 주일 당일까지 검색
+            rangeStart = targetDate.minusDays(6).atStartOfDay(); // 월요일 00:00:00
+            rangeEnd = targetDate.atTime(23, 59, 59); // 주일 23:59:59
+        } else {
+            // 일반 폼의 경우: 기준일 전후 3일로 유연하게 매칭
+            rangeStart = targetDate.minusDays(3).atStartOfDay();
+            rangeEnd = targetDate.plusDays(3).atTime(23, 59, 59);
         }
+
+        // 범위 내 후보 일정 로드
+        List<Schedule> candidates = scheduleRepository.findCandidatesForMonth(rangeStart, rangeEnd);
 
         for (FormAnswer ans : submission.getAnswers()) {
             FormQuestion q = ans.getQuestion();
             WorshipCategory cat = q.getLinkedWorshipCategory();
             Member target = ans.getTargetMember();
+            QuestionType type = q.getInputType();
 
-            // "true" 답변이고 연동이 설정된 경우만 처리
-            if (!"true".equalsIgnoreCase(ans.getValue()) || target == null
-                    || q.getSyncType() == AttendanceSyncType.NONE) {
+            // 대상 멤버가 없는 경우 처리 불가
+            if (target == null) {
                 continue;
             }
 
-            switch (q.getSyncType()) {
+            // 연동 타입 결정
+            AttendanceSyncType syncType = q.getSyncType();
+            if (syncType == AttendanceSyncType.NONE) {
+                if (type == QuestionType.WORSHIP_ATTENDANCE || type == QuestionType.SCHEDULE_ATTENDANCE) {
+                    syncType = AttendanceSyncType.POST_CONFIRMATION;
+                } else {
+                    continue;
+                }
+            }
+
+            boolean isAttended = "true".equalsIgnoreCase(ans.getValue());
+
+            switch (syncType) {
                 case POST_CONFIRMATION: // 사후 확정 (즉시 출석 PRESENT)
-                    weeklySchedules.stream()
-                            .filter(s -> s.getWorshipCategory() == cat)
-                            .findFirst()
-                            .ifPresent(s -> attendanceService.checkInByLeader(s, target));
+                    if (isAttended) {
+                        // 1. 특정 스케줄 ID가 있는 경우 우선 처리 (일정 참석)
+                        if (q.getLinkedScheduleId() != null) {
+                            scheduleRepository.findById(q.getLinkedScheduleId())
+                                    .ifPresent(s -> attendanceService.checkInByLeader(s, target, targetDate));
+                        }
+                        // 2. 카테고리 기반 매칭 (예배 출석)
+                        else if (cat != null) {
+                            candidates.stream()
+                                    .flatMap(s -> RecurrenceCalculator.generateSchedules(s, rangeStart, rangeEnd)
+                                            .stream())
+                                    .filter(sDto -> sDto.getWorshipCategory() == cat)
+                                    // 해당 기간 내에 일치하는 모든 일정에 대해 출석 처리
+                                    .forEach(sDto -> {
+                                        scheduleRepository.findById(sDto.getScheduleId())
+                                                .ifPresent(s -> attendanceService.checkInByLeader(s, target,
+                                                        sDto.getStartDate().toLocalDate()));
+                                    });
+                        }
+                    } else {
+                        // 답변이 "false"이면 출석 취소 처리
+                        if (q.getLinkedScheduleId() != null) {
+                            scheduleRepository.findById(q.getLinkedScheduleId())
+                                    .ifPresent(s -> attendanceService.revertCheckInByLeader(s, target, targetDate));
+                        } else if (cat != null) {
+                            candidates.stream()
+                                    .flatMap(s -> RecurrenceCalculator.generateSchedules(s, rangeStart, rangeEnd)
+                                            .stream())
+                                    .filter(sDto -> sDto.getWorshipCategory() == cat)
+                                    .forEach(sDto -> {
+                                        scheduleRepository.findById(sDto.getScheduleId())
+                                                .ifPresent(s -> attendanceService.revertCheckInByLeader(s, target,
+                                                        sDto.getStartDate().toLocalDate()));
+                                    });
+                        }
+                    }
                     break;
 
                 case PRE_REGISTRATION: // 사전 신청 (명단 등록 REGISTERED)
-                    Long scheduleId = (specificScheduleId != null) ? specificScheduleId
-                            : (cat != null ? findScheduleIdByCat(weeklySchedules, cat) : null);
+                    if (isAttended) {
+                        Long scheduleId = (specificScheduleId != null) ? specificScheduleId
+                                : (q.getLinkedScheduleId() != null ? q.getLinkedScheduleId()
+                                        : (cat != null ? findScheduleIdByCat(candidates, cat) : null));
 
-                    if (scheduleId != null) {
-                        AttendanceRegistrationDto regDto = new AttendanceRegistrationDto();
-                        regDto.setTargetDate(targetDate != null ? targetDate : LocalDate.now());
-                        regDto.setMemberIds(List.of(target.getId()));
-                        attendanceService.registerAttendees(scheduleId, regDto);
+                        if (scheduleId != null) {
+                            AttendanceRegistrationDto regDto = new AttendanceRegistrationDto();
+                            regDto.setTargetDate(targetDate != null ? targetDate : LocalDate.now());
+                            regDto.setMemberIds(List.of(target.getId()));
+                            attendanceService.registerAttendees(scheduleId, regDto);
+                        }
                     }
+                    // 사전 등록의 경우 "false"일 때 삭제할지 여부는 정책에 따라 다름
+                    // 보통 신청 취소 로직이 따로 있으므로 여기서는 추가하지 않음
                     break;
             }
         }
@@ -243,38 +315,10 @@ public class FormService {
         }
     }
 
-    // 3. [핵심] 출석 연동 로직 (DB 기반 동적 카테고리 매칭)
-    private void syncAttendance(FormSubmission submission) {
-        LocalDate targetDate = submission.getTargetSundayDate();
-        if (targetDate == null)
-            return;
-
-        LocalDateTime startOfWeek = targetDate.minusDays(6).atStartOfDay();
-        LocalDateTime endOfWeek = targetDate.atTime(23, 59, 59);
-
-        // 해당 주간의 예배 스케줄 조회
-        List<Schedule> weeklySchedules = scheduleRepository.findByTypeAndStartDateBetween(ScheduleType.WORSHIP,
-                startOfWeek, endOfWeek);
-
-        for (FormAnswer ans : submission.getAnswers()) {
-            WorshipCategory category = ans.getQuestion().getLinkedWorshipCategory();
-            if (category == null)
-                continue;
-
-            // 답변이 "true"이고 대상 멤버가 있으면 출석 처리
-            if ("true".equalsIgnoreCase(ans.getValue()) && ans.getTargetMember() != null) {
-                weeklySchedules.stream()
-                        .filter(s -> s.getWorshipCategory() == category)
-                        .findFirst()
-                        .ifPresent(schedule -> attendanceService.checkInByLeader(schedule, ans.getTargetMember()));
-            }
-        }
-    }
-
     // 4. 권한 체크 로직
     private boolean hasPermission(FormTemplate template, User user, AccessType requiredType) {
         // 관리자는 무조건 통과
-        if (user != null && user.getUserRole() == UserRole.ROLE_ADMIN)
+        if (user != null && user.isPrivileged())
             return true;
 
         // 비로그인 유저인 경우 GUEST 권한 확인
@@ -330,8 +374,53 @@ public class FormService {
     public List<MySubmissionResponseDto> getMySubmissions(User user) {
         if (user.getMember() == null)
             return List.of();
-        return submissionRepository.findAllBySubmitterOrderBySubmitDateDesc(user.getMember())
-                .stream().map(MySubmissionResponseDto::new).collect(Collectors.toList());
+
+        Member member = user.getMember();
+        LocalDate oneMonthAgo = LocalDate.now().minusMonths(1);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. 내가 제출한 내역 조회
+        List<FormSubmission> mySubmissions = submissionRepository.findAllBySubmitterOrderBySubmitDateDesc(member);
+
+        // 2. [수정] 내가 순장/부순장인 경우 우리 순의 보고서도 포함
+        Set<FormSubmission> allSubmissions = new HashSet<>(mySubmissions);
+        memberCellHistoryRepository.findByMemberAndIsActiveTrue(member)
+                .ifPresent(h -> {
+                    if (h.isLeader() || h.isSubLeader()) {
+                        List<FormSubmission> cellSubmissions = submissionRepository
+                                .findAllByTargetCellId(h.getCell().getCellId());
+                        allSubmissions.addAll(cellSubmissions);
+                    }
+                });
+
+        return allSubmissions.stream()
+                .filter(s -> {
+                    FormTemplate template = s.getTemplate();
+                    if (template.isDeleted())
+                        return false;
+                    // 순 보고서는 마감 기한과 상관없이 내역에서 보여야 함
+                    if (template.getCategory() == FormCategory.CELL_REPORT) {
+                        return true;
+                    }
+                    if (!template.isActive())
+                        return false;
+                    if (template.getEndDate() != null && now.isAfter(template.getEndDate()))
+                        return false;
+                    return s.getSubmitDate() != null && !s.getSubmitDate().isBefore(oneMonthAgo);
+                })
+                .sorted(Comparator.comparing(FormSubmission::getCreatedAt).reversed())
+                .map(this::createMySubmissionDto)
+                .collect(Collectors.toList());
+    }
+
+    private MySubmissionResponseDto createMySubmissionDto(FormSubmission submission) {
+        String cellName = null;
+        if (submission.getTargetCellId() != null) {
+            cellName = cellRepository.findById(submission.getTargetCellId())
+                    .map(Cell::getCellName)
+                    .orElse(null);
+        }
+        return new MySubmissionResponseDto(submission, cellName);
     }
 
     // 6. 마이페이지 (작성 가능 목록)
@@ -340,8 +429,17 @@ public class FormService {
         List<FormTemplate> allTemplates = templateRepository.findAllByIsDeletedFalse();
         List<AvailableFormResponseDto> result = new ArrayList<>();
 
-        // 이번 주 주일 (오늘이 평일이면 돌아오는 일요일, 일요일이면 오늘)
-        LocalDate upcomingSunday = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        // 기준 주일 계산 (오늘의 요일에 따라)
+        // 월(1)~수(3): 지난 주일 / 목(4)~일(7): 이번 주 주일
+        LocalDate today = LocalDate.now();
+        DayOfWeek dayOfWeek = today.getDayOfWeek();
+        LocalDate currentTargetSunday;
+
+        if (dayOfWeek.getValue() >= 1 && dayOfWeek.getValue() <= 3) {
+            currentTargetSunday = today.minusDays(dayOfWeek.getValue()); // 월->1일전, 화->2일전, 수->3일전
+        } else {
+            currentTargetSunday = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+        }
 
         for (FormTemplate template : allTemplates) {
             // 1. 비활성 폼 제외 (작년 보고서 등)
@@ -358,29 +456,37 @@ public class FormService {
             if (template.getCategory() == FormCategory.CELL_REPORT) {
                 // 시작일 계산: 템플릿 시작일(필수) 또는 생성일
                 LocalDate startDate = template.getStartDate() != null ? template.getStartDate().toLocalDate()
-                        : template.getCreatedAt().toLocalDate(); // createdAt 필요 시 엔티티에 추가
+                        : template.getCreatedAt().toLocalDate();
 
                 // 시작일이 속한 첫 주일 계산
                 LocalDate loopDate = startDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
 
-                // (선택사항) 회원의 가입일 이전 보고서는 스킵하는 로직
-                if (user.getMember() != null) {
-                    LocalDate joinDate = user.getMember().getCreatedAt().toLocalDate()
-                            .with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-                    if (joinDate.isAfter(loopDate)) {
-                        loopDate = joinDate;
-                    }
-                }
-
                 List<LocalDate> missedDates = new ArrayList<>();
 
-                // 시작일부터 이번 주까지 순회
-                while (!loopDate.isAfter(upcomingSunday)) {
+                // [최적화] 루프 밖에서 셀 정보 한 번만 조회
+                Long cellId = null;
+                if (user.getMember() != null) {
+                    cellId = memberCellHistoryRepository.findByMemberAndIsActiveTrue(user.getMember())
+                            .map(h -> h.getCell().getCellId())
+                            .orElse(null);
+                }
+
+                // 시작일부터 기준 주차까지 순회
+                while (!loopDate.isAfter(currentTargetSunday)) {
                     // 해당 주차 제출 확인
                     boolean submitted = false;
                     if (user.getMember() != null) {
-                        submitted = submissionRepository.existsBySubmitterAndTargetSundayDateAndTargetCellId(
-                                user.getMember(), loopDate, null);
+                        if (cellId != null) {
+                            // 해당 순에서 누군가 냈는지 확인 (REJECTED 제외)
+                            submitted = submissionRepository
+                                    .existsByTemplateIdAndTargetSundayDateAndTargetCellIdAndStatusNot(
+                                            template.getId(), loopDate, cellId, SubmissionStatus.REJECTED);
+                        } else {
+                            // 소속된 순이 없는 경우 본인 제출 여부 확인
+                            submitted = submissionRepository
+                                    .existsBySubmitterAndTemplateAndTargetSundayDateAndStatusNot(
+                                            user.getMember(), template, loopDate, SubmissionStatus.REJECTED);
+                        }
                     }
 
                     if (!submitted) {
@@ -468,7 +574,7 @@ public class FormService {
         Club club = clubRepository.findById(clubId).orElseThrow();
 
         // 권한 체크: 관리자거나 해당 클럽의 리더여야 함
-        if (user.getUserRole() != UserRole.ROLE_ADMIN &&
+        if (!user.isPrivileged() &&
                 (club.getLeader() == null || !club.getLeader().getId().equals(user.getMember().getId()))) {
             throw new GeneralException(CommonErrorCode.FORBIDDEN);
         }
@@ -611,7 +717,7 @@ public class FormService {
                 FormQuestion question = null;
                 if (qDto.getId() != null) {
                     question = section.getQuestions().stream()
-                            .filter(q -> q.getId().equals(qDto.getId()))
+                            .filter(q -> Objects.equals(q.getId(), qDto.getId()))
                             .findFirst()
                             .orElse(null);
                 }
@@ -690,7 +796,46 @@ public class FormService {
     public SubmissionDetailResponseDto getSubmissionDetailForAdmin(Long submissionId) {
         FormSubmission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new IllegalArgumentException("제출 내역 없음"));
-        return new SubmissionDetailResponseDto(submission);
+        return createSubmissionDetailDto(submission);
+    }
+
+    @Transactional(readOnly = true)
+    public SubmissionDetailResponseDto getSubmissionDetail(Long submissionId, User user) {
+        FormSubmission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new IllegalArgumentException("제출 내역 없음"));
+
+        // 권한 체크: 작성자 본인이거나 관리자인 경우
+        boolean isAuthor = submission.getSubmitter() != null
+                && submission.getSubmitter().getId().equals(user.getMember().getId());
+        boolean isCellLeader = false;
+
+        // [추가] 순 보고서인 경우 해당 순의 리더/부리더 권한 체크
+        if (submission.getTemplate().getCategory() == FormCategory.CELL_REPORT
+                && submission.getTargetCellId() != null) {
+            isCellLeader = memberCellHistoryRepository.findByMemberAndIsActiveTrue(user.getMember())
+                    .map(h -> (h.isLeader() || h.isSubLeader())
+                            && h.getCell().getCellId().equals(submission.getTargetCellId()))
+                    .orElse(false);
+        }
+
+        if (!user.isPrivileged() && !isAuthor && !isCellLeader) {
+            // 추가 권한 체크: 해당 템플릿의 매니저 권한이 있는지 확인
+            if (!hasPermission(submission.getTemplate(), user, AccessType.MANAGER)) {
+                throw new GeneralException(CommonErrorCode.FORBIDDEN);
+            }
+        }
+
+        return createSubmissionDetailDto(submission);
+    }
+
+    private SubmissionDetailResponseDto createSubmissionDetailDto(FormSubmission submission) {
+        String cellName = null;
+        if (submission.getTargetCellId() != null) {
+            cellName = cellRepository.findById(submission.getTargetCellId())
+                    .map(Cell::getCellName)
+                    .orElse(null);
+        }
+        return new SubmissionDetailResponseDto(submission, cellName);
     }
 
     public void updateTemplateStatus(Long templateId, Boolean isActive, User user) {
@@ -700,7 +845,7 @@ public class FormService {
 
         // 2. 권한 체크 (필요시 FormGuard 사용 또는 단순 관리자 체크)
         // 관리자가 아니면 권한 없음 예외 처리
-        if (user.getUserRole() != UserRole.ROLE_ADMIN) {
+        if (!user.isPrivileged()) {
             // 만약 동아리장도 자기 폼을 닫을 수 있게 하려면 여기에 로직 추가
             throw new GeneralException(CommonErrorCode.FORBIDDEN);
         }
@@ -713,6 +858,105 @@ public class FormService {
         }
         templateRepository.save(template);
         // Transactional에 의해 자동 저장 (Dirty Checking)
+    }
+
+    @Transactional(readOnly = true)
+    public SubmissionDetailResponseDto getLastSubmission(Long templateId, LocalDate date, Long cellId, User user) {
+        if (user == null)
+            return null;
+
+        FormTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new IllegalArgumentException("템플릿을 찾을 수 없습니다."));
+        Member member = user.getMember();
+
+        FormSubmission submission = null;
+
+        if (template.getCategory() == FormCategory.CELL_REPORT && date != null) {
+            LocalDate targetSunday = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+
+            // [변경] 순 보고서는 제출자 기준이 아닌, 해당 순(cellId)의 보고서를 조회
+            Long effectiveCellId = cellId;
+            if (effectiveCellId == null && member != null) {
+                effectiveCellId = memberCellHistoryRepository.findByMemberAndIsActiveTrue(member)
+                        .map(h -> h.getCell().getCellId())
+                        .orElse(null);
+            }
+
+            if (effectiveCellId != null) {
+                submission = submissionRepository.findAllByTargetCellId(effectiveCellId).stream()
+                        .filter(s -> s.getTemplate().getId().equals(templateId))
+                        .filter(s -> s.getTargetSundayDate() != null && s.getTargetSundayDate().equals(targetSunday))
+                        .sorted(Comparator.comparing(FormSubmission::getCreatedAt).reversed())
+                        .findFirst().orElse(null);
+            }
+        } else {
+            submission = submissionRepository.findFirstByTemplateAndSubmitterOrderBySubmitDateDesc(template, member)
+                    .orElse(null);
+        }
+
+        if (submission == null)
+            return null;
+        return createSubmissionDetailDto(submission);
+    }
+
+    public void updateSubmission(Long submissionId, SubmissionRequestDto dto, User user) {
+        FormSubmission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new IllegalArgumentException("제출 내역을 찾을 수 없습니다."));
+
+        // 권한 체크: 작성자 본인이거나 해당 순의 리더/부리더인 경우
+        boolean isAuthor = submission.getSubmitter() != null
+                && submission.getSubmitter().getId().equals(user.getMember().getId());
+        boolean isCellLeader = false;
+
+        if (submission.getTemplate().getCategory() == FormCategory.CELL_REPORT
+                && submission.getTargetCellId() != null) {
+            isCellLeader = memberCellHistoryRepository.findByMemberAndIsActiveTrue(user.getMember())
+                    .map(h -> (h.isLeader() || h.isSubLeader())
+                            && h.getCell().getCellId().equals(submission.getTargetCellId()))
+                    .orElse(false);
+        }
+
+        if (user == null || (!isAuthor && !isCellLeader)) {
+            throw new GeneralException(CommonErrorCode.FORBIDDEN);
+        }
+
+        // 작성 후 1주일(7일) 이내만 수정 가능
+        if (submission.getCreatedAt().isBefore(LocalDateTime.now().minusDays(7))) {
+            throw new GeneralException(CommonErrorCode.BAD_REQUEST);
+        }
+
+        // 필수 답변 검증
+        validateRequiredAnswers(submission.getTemplate(), dto);
+
+        // [추가] 날짜 및 셀 정보 업데이트
+        if (submission.getTemplate().getCategory() == FormCategory.CELL_REPORT && dto.getDate() != null) {
+            LocalDate targetSunday = dto.getDate().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+            submission.updateTargetInfo(targetSunday, dto.getCellId());
+        } else if (dto.getCellId() != null) {
+            submission.updateTargetInfo(submission.getTargetSundayDate(), dto.getCellId());
+        }
+
+        submission.getAnswers().clear();
+
+        for (SubmissionRequestDto.AnswerDto ans : dto.getAnswers()) {
+            FormQuestion question = questionRepository.findById(ans.getQuestionId()).orElseThrow();
+            Member target = null;
+
+            if (ans.getTargetMemberId() != null) {
+                target = memberRepository.findById(ans.getTargetMemberId()).orElse(null);
+            } else {
+                target = user.getMember();
+            }
+
+            submission.addAnswer(FormAnswer.builder()
+                    .submission(submission)
+                    .question(question)
+                    .targetMember(target)
+                    .value(ans.getValue())
+                    .build());
+        }
+
+        processAttendanceSync(submission, dto.getTargetScheduleId());
     }
 
     private void sendClubApplicationNotification(Long clubId, Member applicant, FormSubmission submission) {

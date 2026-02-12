@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -52,6 +54,33 @@ public class FormController {
     public ResponseEntity<ApiResponseForm<List<MySubmissionResponseDto>>> getMySubmissions(
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         return ResponseEntity.ok(ApiResponseForm.success(formService.getMySubmissions(userDetails.getUser())));
+    }
+
+    @GetMapping("/forms/submissions/last")
+    public ResponseEntity<ApiResponseForm<SubmissionDetailResponseDto>> getLastSubmission(
+            @RequestParam Long templateId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Long cellId,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        User user = (userDetails != null) ? userDetails.getUser() : null;
+        return ResponseEntity.ok(ApiResponseForm.success(formService.getLastSubmission(templateId, date, cellId, user)));
+    }
+
+    @GetMapping("/forms/submissions/{id}")
+    public ResponseEntity<ApiResponseForm<SubmissionDetailResponseDto>> getSubmissionDetail(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return ResponseEntity.ok(ApiResponseForm.success(formService.getSubmissionDetail(id, userDetails.getUser())));
+    }
+
+    @PutMapping("/forms/submissions/{id}")
+    public ResponseEntity<ApiResponseForm<Void>> updateSubmission(
+            @PathVariable Long id,
+            @RequestBody SubmissionRequestDto dto,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        User user = (userDetails != null) ? userDetails.getUser() : null;
+        formService.updateSubmission(id, dto, user);
+        return ResponseEntity.ok(ApiResponseForm.success("수정 완료"));
     }
 
     @GetMapping("/forms/templates/available")
