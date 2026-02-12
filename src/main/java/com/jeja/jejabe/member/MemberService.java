@@ -26,17 +26,12 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
 
-
-
     @Transactional(readOnly = true)
     public Page<MemberDto> getMembers(String keyword, MemberStatus status, Boolean hasAccount, MemberRole role,
             Pageable pageable) {
 
-        // 제외할 상태 목록 정의 (INACTIVE, SYSTEM)
-        List<MemberStatus> excludedStatuses = List.of(MemberStatus.INACTIVE, MemberStatus.SYSTEM);
-
-        // Repository 호출 시 리스트 전달
-        return memberRepository.findAllByKeywordAndStatus(keyword, status, excludedStatuses, hasAccount, role, pageable)
+        // 모든 상태를 포함하여 조회 (필터링 제거)
+        return memberRepository.findAllByKeywordAndStatus(keyword, status, hasAccount, role, pageable)
                 .map(MemberDto::new);
     }
 
@@ -65,6 +60,23 @@ public class MemberService {
         return savedMember.getId();
     }
 
+    // 새 멤버 대량 등록
+    public int createMembersBatch(List<MemberCreateRequestDto> requestDtos) {
+        List<Member> members = requestDtos.stream()
+                .map(dto -> Member.builder()
+                        .name(dto.getName())
+                        .phone(dto.getPhone())
+                        .birthDate(dto.getBirthDate())
+                        .memberStatus(dto.getMemberStatus() != null ? dto.getMemberStatus() : MemberStatus.ACTIVE)
+                        .role(MemberRole.MEMBER)
+                        .gender(dto.getGender())
+                        .memberImageUrl(dto.getMemberImageUrl())
+                        .build())
+                .collect(Collectors.toList());
+        memberRepository.saveAll(members);
+        return members.size();
+    }
+
     // 4. 멤버 정보 수정
     public void updateMember(Long memberId, MemberUpdateRequestDto requestDto) {
         Member member = memberRepository.findById(memberId)
@@ -72,8 +84,6 @@ public class MemberService {
 
         member.update(requestDto); // 엔티티의 비즈니스 메소드 호출
     }
-
-
 
     // 5. 멤버 삭제 (논리적 삭제 또는 물리적 삭제)
     // 여기서는 물리적 삭제로 구현. User와 연관관계가 있으므로 주의 필요
@@ -109,7 +119,8 @@ public class MemberService {
                 case ACTIVE -> activeCount += count;
                 case NEWCOMER -> newcomerCount += count;
                 case LONG_TERM_ABSENT, MOVED -> inactiveCount += count;
-                default -> {}
+                default -> {
+                }
             }
         }
 

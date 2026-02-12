@@ -3,10 +3,7 @@ package com.jeja.jejabe.member;
 import com.jeja.jejabe.global.response.ApiResponseForm;
 import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.member.domain.MemberStatus;
-import com.jeja.jejabe.member.dto.MemberCreateRequestDto;
-import com.jeja.jejabe.member.dto.MemberDto;
-import com.jeja.jejabe.member.dto.MemberStatisticsResponse;
-import com.jeja.jejabe.member.dto.MemberUpdateRequestDto;
+import com.jeja.jejabe.member.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +29,22 @@ public class MemberController {
     public ResponseEntity<ApiResponseForm<Integer>> importMembers(@RequestParam("file") MultipartFile file) {
         int uploadedCount = excelMemberService.uploadMembersFromExcel(file);
         return ResponseEntity.ok(ApiResponseForm.success(uploadedCount, uploadedCount + "명의 멤버가 성공적으로 등록되었습니다."));
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR','EXECUTIVE')")
+    @PostMapping(value = "/excel-preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponseForm<List<MemberExcelPreviewDto>>> previewMembers(
+            @RequestParam("file") MultipartFile file) {
+        List<MemberExcelPreviewDto> previewList = excelMemberService.previewMembersFromExcel(file);
+        return ResponseEntity.ok(ApiResponseForm.success(previewList));
+    }
+
+    @PostMapping("/batch")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR','EXECUTIVE')")
+    public ResponseEntity<ApiResponseForm<Integer>> createMembersBatch(
+            @RequestBody List<MemberCreateRequestDto> requestDtos) {
+        int count = memberService.createMembersBatch(requestDtos);
+        return ResponseEntity.ok(ApiResponseForm.success(count, count + "명의 멤버가 성공적으로 등록되었습니다."));
     }
 
     @GetMapping
