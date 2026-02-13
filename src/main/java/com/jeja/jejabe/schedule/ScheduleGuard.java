@@ -40,14 +40,6 @@ public class ScheduleGuard {
     }
 
     private boolean isAdminGroup(UserDetailsImpl userDetails) {
-        // 1. UserRole 체크 (ADMIN, PASTOR)
-        UserRole userRole = userDetails.getUser().getUserRole();
-        if (userRole == UserRole.ROLE_ADMIN || userRole == UserRole.ROLE_PASTOR) {
-            return true;
-        }
-
-        // 2. MemberRole 체크 (EXECUTIVE) - Authorities 활용
-        return userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_EXECUTIVE"));
+        return userDetails != null && userDetails.getUser().isPrivileged();
     }
 }

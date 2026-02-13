@@ -28,9 +28,21 @@ public class BoardGuard {
     // 게시판 읽기 권한 (Board 객체 직접 전달)
     @Transactional(readOnly = true)
     public boolean canReadBoard(UserDetailsImpl userDetails, Board board) {
-        if (board == null) return true;
+        if (board == null)
+            return true;
 
-        if (isAdmin(userDetails)) return true;
+        if (isAdmin(userDetails))
+            return true;
+
+        // "목사님께 질문" 게시판(question)은 작성자와 관리자(목사님 포함)만 접근 가능하도록 설정할 수도 있지만,
+        // 목록 조회 자체는 허용하고 글 상세 내용(isPrivate)으로 막는 것이 일반적임.
+        // 만약 게시판 입장 자체를 막고 싶다면 아래 주석 해제.
+        /*
+         * if ("question".equals(board.getBoardKey())) {
+         * return isAdmin(userDetails);
+         * }
+         */
+
         Member member = getMember(userDetails);
 
         switch (board.getAccessType()) {
@@ -39,7 +51,8 @@ public class BoardGuard {
             case MEMBER:
                 return member != null;
             case CLUB:
-                if (member == null || board.getClub() == null) return false;
+                if (member == null || board.getClub() == null)
+                    return false;
                 return isClubMemberOrLeader(board.getClub(), member);
             case ADMIN:
                 return false;
@@ -58,27 +71,42 @@ public class BoardGuard {
         return canReadBoard(userDetails, board);
     }
 
+    // 게시판 읽기 권한 (BoardId로 조회)
+    @Transactional(readOnly = true)
+    public boolean canReadBoard(UserDetailsImpl userDetails, Long boardId) {
+        Board board = boardRepository.findById(boardId).orElse(null);
+        if (board == null)
+            return true; // 서비스에서 404 처리
+
+        return canReadBoard(userDetails, board);
+    }
+
     // 게시판 글쓰기 권한 (Board 객체 직접 전달)
     @Transactional(readOnly = true)
     public boolean canWritePost(UserDetailsImpl userDetails, Board board) {
-        if (board == null) return false;
+        if (board == null)
+            return false;
 
         // 1. 관리자 프리패스
-        if (isAdmin(userDetails)) return true;
+        if (isAdmin(userDetails))
+            return true;
 
         // 2. 기본적으로 읽기 권한이 있어야 쓰기도 가능하다고 가정
-        if (!canReadBoard(userDetails, board)) return false;
+        if (!canReadBoard(userDetails, board))
+            return false;
 
         // 3. 쓰기 권한 체크
         Member member = getMember(userDetails);
-        if (member == null) return false; // 글쓰기는 무조건 로그인 필요
+        if (member == null)
+            return false; // 글쓰기는 무조건 로그인 필요
 
         switch (board.getWriteAccessType()) {
             case PUBLIC:
             case MEMBER:
                 return true; // 이미 위에서 member != null 체크함
             case CLUB:
-                if (board.getClub() == null) return false;
+                if (board.getClub() == null)
+                    return false;
                 return isClubMemberOrLeader(board.getClub(), member);
             case ADMIN:
                 return false; // 관리자는 위에서 처리됨
@@ -104,77 +132,112 @@ public class BoardGuard {
         if (!canReadBoard(userDetails, post.getBoard().getBoardKey()))
             return false;
 
-        if (post.isPrivate()) {
-            if (isAdmin(userDetails))
+        // "목사님께 질문" 게시판의 글이거나 일반 게시판의 비밀글인 경우
+        if (post.isPrivate() || post.getBoard().isAlwaysSecret()) {
+            // 목사님/관리자이거나 작성자 본인인 경우만 허용
+            if (isPastorOrAdmin(userDetails))
                 return true;
             Member member = getMember(userDetails);
-            if (member == null)
+            if (member == null || post.getAuthor() == null)
                 return false;
             return post.getAuthor().getId().equals(member.getId());
         }
         return true;
     }
 
-    // 게시글 수정/삭제
+    // 게시글 수정
     @Transactional(readOnly = true)
-    public boolean canEditDeletePost(UserDetailsImpl userDetails, Long postId) {
+    public boolean canEditPost(UserDetailsImpl userDetails, Long postId) {
         if (userDetails == null)
             return false;
-        if (isAdmin(userDetails))
-            return true;
+
         Post post = postRepository.findById(postId).orElse(null);
         if (post == null)
             return true;
 
         Member member = getMember(userDetails);
+        if (member == null)
+            return false;
 
-        // 1. 작성자 본인
-        if (post.getAuthor().getId().equals(member.getId()))
-            return true;
-
-        // 2. 클럽 게시판의 경우 리더는 삭제 가능 (관리 권한)
-        Board board = post.getBoard();
-        if (board.getAccessType() == BoardAccessType.CLUB && board.getClub() != null) {
-            return isClubMemberOrLeader(board.getClub(), member) &&
-                    board.getClub().getLeader() != null &&
-                    board.getClub().getLeader().getId().equals(member.getId());
-        }
-
-        return false;
+        // 수정은 오직 글 작성자만 가능
+        return post.getAuthor().getId().equals(member.getId());
     }
 
-    // 댓글 삭제
+    // 게시글 삭제
     @Transactional(readOnly = true)
-    public boolean canEditDeleteComment(UserDetailsImpl userDetails, Long commentId) {
+    public boolean canDeletePost(UserDetailsImpl userDetails, Long postId) {
         if (userDetails == null)
             return false;
-        if (isAdmin(userDetails))
+
+        // 시스템 관리자(ROLE_ADMIN)는 삭제 가능
+        if (isSystemAdmin(userDetails))
             return true;
+
+        Post post = postRepository.findById(postId).orElse(null);
+        if (post == null)
+            return true;
+
+        Member member = getMember(userDetails);
+        if (member == null)
+            return false;
+
+        // 작성자 본인만 삭제 가능 (클럽 리더 권한 제외)
+        return post.getAuthor().getId().equals(member.getId());
+    }
+
+    // 댓글 수정
+    @Transactional(readOnly = true)
+    public boolean canEditComment(UserDetailsImpl userDetails, Long commentId) {
+        if (userDetails == null)
+            return false;
+
         Comment comment = commentRepository.findById(commentId).orElse(null);
         if (comment == null)
             return true;
 
         Member member = getMember(userDetails);
+        if (member == null)
+            return false;
 
-        // 1. 작성자 본인
-        if (comment.getAuthor().getId().equals(member.getId()))
-            return true;
-
-        // 2. 게시글 작성자도 댓글 삭제 가능하게 할지? (보통은 아님, 하지만 에타 등은 가능)
-        // 여기서는 클럽 리더 권한만 추가
-        Post post = comment.getPost();
-        Board board = post.getBoard();
-        if (board.getAccessType() == BoardAccessType.CLUB && board.getClub() != null) {
-            return isClubMemberOrLeader(board.getClub(), member) &&
-                    board.getClub().getLeader() != null &&
-                    board.getClub().getLeader().getId().equals(member.getId());
-        }
-
-        return false;
+        // 수정은 오직 댓글 작성자만 가능
+        return comment.getAuthor().getId().equals(member.getId());
     }
 
-    private boolean isAdmin(UserDetailsImpl userDetails) {
+    // 댓글 삭제
+    @Transactional(readOnly = true)
+    public boolean canDeleteComment(UserDetailsImpl userDetails, Long commentId) {
+        if (userDetails == null)
+            return false;
+
+        // 시스템 관리자는 삭제 가능
+        if (isSystemAdmin(userDetails))
+            return true;
+
+        Comment comment = commentRepository.findById(commentId).orElse(null);
+        if (comment == null)
+            return true;
+
+        Member member = getMember(userDetails);
+        if (member == null)
+            return false;
+
+        // 작성자 본인만 삭제 가능 (클럽 리더 권한 제외)
+        return comment.getAuthor().getId().equals(member.getId());
+    }
+
+    private boolean isSystemAdmin(UserDetailsImpl userDetails) {
         return userDetails != null && userDetails.getUser().getUserRole() == UserRole.ROLE_ADMIN;
+    }
+
+    public boolean isAdmin(UserDetailsImpl userDetails) {
+        return userDetails != null && userDetails.getUser().isPrivileged();
+    }
+
+    public boolean isPastorOrAdmin(UserDetailsImpl userDetails) {
+        if (userDetails == null)
+            return false;
+        UserRole role = userDetails.getUser().getUserRole();
+        return role == UserRole.ROLE_ADMIN || role == UserRole.ROLE_PASTOR;
     }
 
     private Member getMember(UserDetailsImpl userDetails) {

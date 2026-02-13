@@ -60,17 +60,6 @@ public class AttendanceGuard {
     }
 
     private boolean isAdminGroup(UserDetailsImpl userDetails) {
-        if (userDetails == null) return false;
-
-        // 1. 시스템 관리자(UserRole) 체크
-        UserRole userRole = userDetails.getUser().getUserRole();
-        if (userRole == UserRole.ROLE_ADMIN || userRole == UserRole.ROLE_PASTOR) {
-            return true;
-        }
-
-        // 2. 임원(MemberRole) 체크
-        // UserDetailsImpl 안에 이미 authorities가 세팅되어 있으므로 그걸 활용하는 게 가장 깔끔하고 빠릅니다.
-        return userDetails.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_EXECUTIVE"));
+        return userDetails != null && userDetails.getUser().isPrivileged();
     }
 }
