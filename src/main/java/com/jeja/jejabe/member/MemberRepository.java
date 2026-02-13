@@ -1,6 +1,5 @@
 package com.jeja.jejabe.member;
 
-import aj.org.objectweb.asm.commons.Remapper;
 import com.jeja.jejabe.club.ClubType;
 import com.jeja.jejabe.member.domain.Member;
 import com.jeja.jejabe.member.domain.MemberRole;
@@ -58,16 +57,25 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
                         "GROUP BY m.memberStatus")
         List<Object[]> countMembersGroupedByMemberStatus(List<MemberStatus> excludedStatuses);
 
-        @Query("SELECT m FROM Member m LEFT JOIN m.roles r WHERE " +
-                        "(:keyword IS NULL OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) " +
+        @Query(value = "SELECT m FROM Member m WHERE " +
+                        "m.memberStatus != 'SYSTEM' " +
+                        "AND (:keyword IS NULL OR :keyword = '' OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) "
+                        +
                         "AND (:status IS NULL OR m.memberStatus = :status) " +
-                        "AND m.memberStatus NOT IN :excluded " +
-                        "AND (:hasAccount IS NULL OR (:hasAccount = true AND m.user IS NOT NULL) OR (:hasAccount = false AND m.user IS NULL)) " +
-                        "AND (:role IS NULL OR r = :role)")
+                        "AND (:hasAccount IS NULL OR (:hasAccount = true AND m.user IS NOT NULL) OR (:hasAccount = false AND m.user IS NULL)) "
+                        +
+                        "AND (:role IS NULL OR EXISTS (SELECT 1 FROM m.roles r WHERE r = :role))", countQuery = "SELECT COUNT(m) FROM Member m WHERE "
+                                        +
+                                        "m.memberStatus != 'SYSTEM' " +
+                                        "AND (:keyword IS NULL OR :keyword = '' OR m.name LIKE %:keyword% OR m.phone LIKE %:keyword%) "
+                                        +
+                                        "AND (:status IS NULL OR m.memberStatus = :status) " +
+                                        "AND (:hasAccount IS NULL OR (:hasAccount = true AND m.user IS NOT NULL) OR (:hasAccount = false AND m.user IS NULL)) "
+                                        +
+                                        "AND (:role IS NULL OR EXISTS (SELECT 1 FROM m.roles r WHERE r = :role))")
         Page<Member> findAllByKeywordAndStatus(
                         @Param("keyword") String keyword,
                         @Param("status") MemberStatus status,
-                        @Param("excluded") List<MemberStatus> excluded,
                         @Param("hasAccount") Boolean hasAccount,
                         @Param("role") MemberRole role,
                         Pageable pageable);

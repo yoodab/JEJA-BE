@@ -45,8 +45,8 @@ public class FormGuard {
 
     // 내부 로직 (Service에서 이관)
     private boolean checkPermission(FormTemplate template, UserDetailsImpl userDetails, AccessType requiredType) {
-        // 1. 관리자 프리패스
-        if (userDetails != null && userDetails.getUser().getUserRole() == UserRole.ROLE_ADMIN) return true;
+        // 1. 관리자/목사/임원 프리패스
+        if (userDetails != null && userDetails.getUser().isPrivileged()) return true;
 
         // 2. 비로그인 유저(GUEST) 체크
         if (userDetails == null) {

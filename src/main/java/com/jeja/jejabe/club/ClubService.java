@@ -9,6 +9,7 @@ import com.jeja.jejabe.club.dto.ClubUpdateRequestDto;
 import com.jeja.jejabe.global.exception.CommonErrorCode;
 import com.jeja.jejabe.global.exception.GeneralException;
 import com.jeja.jejabe.member.domain.Member;
+import com.jeja.jejabe.member.domain.MemberRole;
 import com.jeja.jejabe.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,7 +57,8 @@ public class ClubService {
     @Transactional(readOnly = true)
     public List<ClubResponseDto> getMyClubs(User user) {
         Member member = user.getMember();
-        if (member == null) return List.of();
+        if (member == null)
+            return List.of();
 
         return clubMemberRepository.findAllByMember(member).stream()
                 .map(cm -> new ClubResponseDto(cm.getClub()))
@@ -96,10 +98,16 @@ public class ClubService {
 
         // 새 팀장이 멤버가 아니면 추가
         if (clubMemberRepository.findByClubAndMember(club, newLeader).isEmpty()) {
-            clubMemberRepository.save(new ClubMember(club, newLeader));
+            ClubMember newClubMember = new ClubMember(club, newLeader);
+            clubMemberRepository.save(newClubMember);
+            club.getMembers().add(newClubMember); // 리스트에도 추가하여 즉시 반영되도록 함
         }
 
         club.changeLeader(newLeader);
+
+        // 새 팀장에게 TEAM_LEADER 역할 부여 (없을 경우)
+        newLeader.addRole(MemberRole.TEAM_LEADER);
+        memberRepository.save(newLeader);
     }
 
     // 1. 팀 정보 수정 (관리자 or 팀장)
@@ -112,8 +120,7 @@ public class ClubService {
 
         club.updateInfo(
                 dto.getName(),
-                dto.getDescription()
-        );
+                dto.getDescription());
     }
 
     // 2. 팀 삭제 (관리자 전용)
@@ -144,6 +151,7 @@ public class ClubService {
         ClubMember clubMember = new ClubMember(club, member);
         clubMemberRepository.save(clubMember);
     }
+
     @Transactional(readOnly = true)
     public ClubDetailResponseDto getClubByType(ClubType type) {
         Club club = clubRepository.findByType(type)
@@ -154,10 +162,11 @@ public class ClubService {
 
     // 권한 체크 헬퍼
     private void validateLeaderOrAdmin(Club club, User user) {
-        if (user.getUserRole() == UserRole.ROLE_ADMIN) return;
+        if (user.isPrivileged())
+            return;
 
         Member member = user.getMember();
-        if (member == null || !club.getLeader().getId().equals(member.getId())) {
+        if (member == null || club.getLeader() == null || !club.getLeader().getId().equals(member.getId())) {
             throw new GeneralException(CommonErrorCode.FORBIDDEN);
         }
     }

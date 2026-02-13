@@ -30,7 +30,6 @@ public class AdminInitializer implements CommandLineRunner {
     private final BoardRepository boardRepository;
     private final ClubRepository clubRepository;
 
-
     @Override
     @Transactional
     public void run(String... args) throws Exception {
@@ -38,10 +37,12 @@ public class AdminInitializer implements CommandLineRunner {
         Member adminMember = createAdminIfNeeded();
 
         // 2. 필수 게시판 생성 (프론트엔드 boardKey 매칭용)
-        createBoardIfNeeded("공지사항", "notice", "청년부 주요 소식을 전합니다.", BoardAccessType.PUBLIC);
-        createBoardIfNeeded("자유게시판", "free", "자유롭게 소통하는 공간입니다.", BoardAccessType.MEMBER);
-        createBoardIfNeeded("기도제목", "prayer", "함께 기도를 나누는 공간입니다.", BoardAccessType.MEMBER);
-        createBoardIfNeeded("목사님께 질문", "question", "무엇이든 물어보세요.", BoardAccessType.MEMBER);
+        createBoardIfNeeded("공지사항", "notice", "청년부 주요 소식을 전합니다.", BoardAccessType.PUBLIC, BoardAccessType.ADMIN, false);
+        createBoardIfNeeded("자유게시판", "free", "자유롭게 소통하는 공간입니다.", BoardAccessType.MEMBER, BoardAccessType.MEMBER, false);
+        createBoardIfNeeded("기도제목", "prayer", "함께 기도를 나누는 공간입니다.", BoardAccessType.MEMBER, BoardAccessType.MEMBER,
+                false);
+        createBoardIfNeeded("목사님께 질문", "question", "무엇이든 물어보세요.", BoardAccessType.MEMBER, BoardAccessType.MEMBER,
+                false);
 
         // 3. 필수 시스템 팀 생성 (새신자 관리 등을 위해 필요)
         createClubIfNeeded("새신자팀", "새신자를 환영하고 정착을 돕는 팀입니다.", ClubType.NEW_BELIEVER, null);
@@ -75,16 +76,30 @@ public class AdminInitializer implements CommandLineRunner {
         return userRepository.findByLoginId("admin").get().getMember();
     }
 
-    private void createBoardIfNeeded(String name, String key, String desc, BoardAccessType type) {
-        if (boardRepository.findByBoardKey(key).isEmpty()) {
-            Board board = Board.builder()
+    private void createBoardIfNeeded(String name, String key, String desc, BoardAccessType accessType,
+            BoardAccessType writeAccessType, boolean isAlwaysSecret) {
+        Board board = boardRepository.findByBoardKey(key).orElse(null);
+        if (board == null) {
+            board = Board.builder()
                     .name(name)
                     .boardKey(key)
                     .description(desc)
-                    .accessType(type)
+                    .accessType(accessType)
+                    .writeAccessType(writeAccessType)
                     .build();
             boardRepository.save(board);
             System.out.println(">>> [INIT] 게시판 생성 완료: " + name);
+        } else {
+            // 이미 존재하는 게시판의 속성이 다르면 업데이트
+            boolean updated = false;
+            if (board.getWriteAccessType() != writeAccessType || board.isAlwaysSecret() != isAlwaysSecret) {
+                board.update(null, null, null, writeAccessType, null, isAlwaysSecret);
+                updated = true;
+            }
+            if (updated) {
+                boardRepository.save(board);
+                System.out.println(">>> [INIT] 게시판 속성 업데이트 완료: " + name);
+            }
         }
     }
 
@@ -101,6 +116,5 @@ public class AdminInitializer implements CommandLineRunner {
             System.out.println(">>> [INIT] 시스템 팀 생성 완료: " + name);
         }
     }
-
 
 }

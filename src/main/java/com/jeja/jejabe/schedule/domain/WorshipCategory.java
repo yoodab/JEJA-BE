@@ -1,5 +1,7 @@
 package com.jeja.jejabe.schedule.domain;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -17,4 +19,28 @@ public enum WorshipCategory {
     ETC("기타");
 
     private final String description;
+
+    @JsonValue
+    public String getName() {
+        return name();
+    }
+
+    @JsonCreator
+    public static WorshipCategory fromString(String value) {
+        if (value == null) return null;
+        try {
+            return WorshipCategory.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            // 숫자로 들어오는 경우 처리 (레거시 대응)
+            try {
+                int index = Integer.parseInt(value);
+                if (index >= 0 && index < values().length) {
+                    return values()[index];
+                }
+            } catch (NumberFormatException nfe) {
+                // Ignore
+            }
+            return null;
+        }
+    }
 }

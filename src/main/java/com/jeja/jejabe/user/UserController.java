@@ -76,7 +76,7 @@ public class UserController {
      * GET /api/users?status=PENDING -> 승인 대기자 조회
      * GET /api/users?status=ACTIVE -> 활동 중인 유저 조회
      */
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'EXECUTIVE')")
     @GetMapping
     public ResponseEntity<ApiResponseForm<List<UserResponseDto>>> getUsers(
             @RequestParam(value = "status", required = false) String statusStr,
@@ -100,7 +100,7 @@ public class UserController {
      * Body: { "status": "ACTIVE" } -> 승인
      * Body: { "status": "REJECTED" } -> 거절
      */
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'EXECUTIVE')")
     @PatchMapping("/{userId}/status")
     public ResponseEntity<ApiResponseForm<Void>> updateUserStatus(
             @PathVariable Long userId,
@@ -116,12 +116,14 @@ public class UserController {
                 "사용자 상태가 " + requestDto.getStatus() + "(으)로 변경되었습니다."));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'EXECUTIVE')")
     @PatchMapping("/admin/users/{userId}/password-reset")
     public ResponseEntity<ApiResponseForm<Void>> resetPassword(@PathVariable Long userId) {
         userService.resetPassword(userId, "1234");
         return ResponseEntity.ok(ApiResponseForm.success("비밀번호가 1234로 초기화되었습니다."));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'EXECUTIVE')")
     @GetMapping("/admin/dashboard/stats") // URL: /api/users/admin/dashboard/stats
     public ResponseEntity<ApiResponseForm<AdminDashboardStatsDto>> getDashboardStats() {
         return ResponseEntity.ok(ApiResponseForm.success(userService.getDashboardStats()));

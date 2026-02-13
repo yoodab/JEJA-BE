@@ -73,10 +73,15 @@ public class AuthService {
         redisUtil.deleteData(SIGNUP_PREFIX + email);
     }
 
-    @Transactional(readOnly = true) // Member 정보를 조회하므로 트랜잭션 필요
+    @Transactional(readOnly = true)
     public LoginResponseDto login(LoginRequestDto requestDto, HttpServletResponse response) {
         User user = userRepository.findByLoginId(requestDto.getLoginId())
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.USER_NOT_FOUND));
+
+        // Member의 roles를 강제로 초기화 (Lazy loading 문제 해결)
+        if (user.getMember() != null) {
+            user.getMember().getRoles().size();
+        }
 
         if (!passwordEncoder.matches(requestDto.getPassword(), user.getPassword())) {
             // 실제 운영에서는 "아이디 또는 비밀번호가 일치하지 않습니다."로 통일하는 것이 보안상 더 좋습니다.

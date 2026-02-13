@@ -76,14 +76,14 @@ public class BoardService {
     public List<BoardResponseDto> getAllBoards() {
         UserDetailsImpl userDetails = getCurrentUserDetails();
         boolean isLoggedIn = (userDetails != null);
-        boolean isAdmin = isLoggedIn && (userDetails.getUser().getUserRole() == UserRole.ROLE_ADMIN);
+        boolean isPrivileged = isLoggedIn && userDetails.getUser().isPrivileged();
 
         // 캐시된 전체 목록 가져오기 (실제론 별도 메소드로 분리하여 @Cacheable 적용 권장)
         List<Board> allBoards = boardRepository.findAll();
 
         return allBoards.stream()
                 .filter(board -> {
-                    if (isAdmin)
+                    if (isPrivileged)
                         return true;
                     // ★ 중요: 일반 조회에서 CLUB 게시판은 숨김
                     if (board.getAccessType() == BoardAccessType.CLUB)

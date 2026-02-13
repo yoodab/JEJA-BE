@@ -16,20 +16,20 @@ public class BoardController {
     private final BoardService boardService;
 
     @PostMapping("/admin/boards")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'EXECUTIVE')")
     public ResponseEntity<?> createBoard(@RequestBody BoardCreateRequestDto dto) {
         return ResponseEntity.ok(ApiResponseForm.success(boardService.createBoard(dto), "생성 완료"));
     }
 
     @PatchMapping("/admin/boards/{boardId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'EXECUTIVE')")
     public ResponseEntity<?> updateBoard(@PathVariable Long boardId, @RequestBody BoardUpdateRequestDto dto) {
         boardService.updateBoard(boardId, dto);
         return ResponseEntity.ok(ApiResponseForm.success(null, "수정 완료"));
     }
 
     @DeleteMapping("/admin/boards/{boardId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PASTOR', 'EXECUTIVE')")
     public ResponseEntity<?> deleteBoard(@PathVariable Long boardId) {
         boardService.deleteBoard(boardId);
         return ResponseEntity.ok(ApiResponseForm.success(null, "삭제 완료"));

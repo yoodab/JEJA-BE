@@ -120,13 +120,14 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.POST, "/api/rolling-papers/*/stickers")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/api/rolling-papers")
-                                                .hasRole("ADMIN") // 생성은 관리자만
+                                                .hasAnyRole("ADMIN", "PASTOR", "EXECUTIVE") // 생성은 관리자/목사/임원
                                                 // 스티커 업로드 (공개)
                                                 .requestMatchers("/api/files/upload").permitAll() // 파일 업로드 공개 허용 (주의:
                                                                                                   // 보안상 취약할 수 있음)
 
-                                                // 8. 관리자 전용
-                                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                                                // 8. 관리자/목사/임원 공통 (admin 하위 모든 API)
+                                                .requestMatchers("/api/admin/**")
+                                                .hasAnyRole("ADMIN", "PASTOR", "EXECUTIVE")
 
                                                 // 9. 그 외 모든 요청은 인증 필요
                                                 .anyRequest().authenticated());

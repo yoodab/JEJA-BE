@@ -47,8 +47,7 @@ public class Member extends BaseTimeEntity {
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "member_roles", joinColumns = @JoinColumn(name = "member_id"))
     @Enumerated(EnumType.STRING)
-    @Column(name = "role")
-
+    @Column(name = "role", length = 50)
     private Set<MemberRole> roles = new HashSet<>();
 
     // ========================================================================
@@ -137,5 +136,9 @@ public class Member extends BaseTimeEntity {
             this.phone = phone;
         if (memberImageUrl != null)
             this.memberImageUrl = memberImageUrl;
+    }
+
+    public void updatePhone(String newPhone) {
+    this.phone = newPhone;
     }
 }

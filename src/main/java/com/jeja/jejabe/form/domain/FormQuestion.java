@@ -27,9 +27,11 @@ public class FormQuestion extends BaseTimeEntity {
     private boolean required;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private QuestionType inputType;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private AttendanceSyncType syncType = AttendanceSyncType.NONE;
 
     @Column(columnDefinition = "TEXT")
@@ -39,6 +41,8 @@ public class FormQuestion extends BaseTimeEntity {
     private boolean isActive = true;
 
     private boolean isMemberSpecific;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private WorshipCategory linkedWorshipCategory;
     private Long linkedScheduleId;
     private LocalDate linkedScheduleDate;

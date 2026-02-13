@@ -9,8 +9,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
-    Page<Post> findAllByBoard(Board board, Pageable pageable);
-    @Query("SELECT p FROM Post p WHERE p.board = :board " +
-            "AND (:keyword IS NULL OR :keyword = '' OR p.title LIKE %:keyword% OR p.content LIKE %:keyword%)")
-    Page<Post> findAllByBoardAndKeyword(@Param("board") Board board, @Param("keyword") String keyword, Pageable pageable);
+        Page<Post> findAllByBoard(Board board, Pageable pageable);
+
+        @Query("SELECT p FROM Post p WHERE p.board = :board " +
+                        "AND (:keyword IS NULL OR :keyword = '' OR p.title LIKE %:keyword% OR p.content LIKE %:keyword%)")
+        Page<Post> findAllByBoardAndKeywordAndSecurity(
+                        @Param("board") Board board,
+                        @Param("keyword") String keyword,
+                        Pageable pageable);
 }

@@ -14,5 +14,5 @@ public class ExcelMemberDto {
     private LocalDate birthDate;
     private String phone;
     private String gender;
-    // 초기 status와 role은 고정값으로 주거나, 엑셀에 포함시킬 수 있습니다.
+    private String memberStatus;
 }

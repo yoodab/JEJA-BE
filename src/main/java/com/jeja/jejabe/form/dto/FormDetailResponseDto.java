@@ -1,6 +1,7 @@
 package com.jeja.jejabe.form.dto;
 
 import com.jeja.jejabe.form.domain.*;
+import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -65,9 +66,11 @@ public class FormDetailResponseDto {
         private Long id;
         private String label;
         private QuestionType inputType;
+        private AttendanceSyncType syncType;
         private String optionsJson; // 프론트에서 파싱해서 분기 로직 처리
         private boolean required;
         private boolean isMemberSpecific;
+        private WorshipCategory linkedWorshipCategory;
         private Long linkedScheduleId; // 특정 일정 ID
         private LocalDate linkedScheduleDate;
 
@@ -75,12 +78,13 @@ public class FormDetailResponseDto {
             this.id = q.getId();
             this.label = q.getLabel();
             this.inputType = q.getInputType();
+            this.syncType = q.getSyncType();
             this.optionsJson = q.getOptionsJson();
             this.required = q.isRequired();
             this.isMemberSpecific = q.isMemberSpecific();
+            this.linkedWorshipCategory = q.getLinkedWorshipCategory();
             this.linkedScheduleId = q.getLinkedScheduleId();
             this.linkedScheduleDate = q.getLinkedScheduleDate();
-
         }
     }
 }

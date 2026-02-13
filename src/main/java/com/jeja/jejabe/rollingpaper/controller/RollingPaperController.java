@@ -6,6 +6,10 @@ import com.jeja.jejabe.rollingpaper.dto.RollingPaperResponseDto;
 import com.jeja.jejabe.rollingpaper.dto.StickerCreateRequestDto;
 import com.jeja.jejabe.rollingpaper.service.RollingPaperService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,8 +30,10 @@ public class RollingPaperController {
 
     // Admin: List
     @GetMapping
-    public ResponseEntity<List<RollingPaperResponseDto>> getAllRollingPapers() {
-        return ResponseEntity.ok(rollingPaperService.getAllRollingPapers());
+    public ResponseEntity<Page<RollingPaperResponseDto>> getAllRollingPapers(
+            @RequestParam(required = false) String title,
+            @PageableDefault(size = 12, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(rollingPaperService.getAllRollingPapers(title, pageable));
     }
 
     // Public: Detail
@@ -50,7 +56,8 @@ public class RollingPaperController {
 
     // Admin: Update
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateRollingPaper(@PathVariable Long id, @RequestBody RollingPaperCreateRequestDto requestDto) {
+    public ResponseEntity<Void> updateRollingPaper(@PathVariable Long id,
+            @RequestBody RollingPaperCreateRequestDto requestDto) {
         rollingPaperService.updateRollingPaper(id, requestDto);
         return ResponseEntity.ok().build();
     }

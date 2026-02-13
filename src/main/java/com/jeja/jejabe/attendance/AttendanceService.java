@@ -265,17 +265,15 @@ public class AttendanceService {
 
         String clientIp = getClientIp(request);
 
+        // IP 중복 체크 (해당 회차/날짜 기준)
         if (attendanceRepository.existsByScheduleAndScheduleDateAndIpAddress(schedule, targetDate, clientIp)) {
             throw new GeneralException(CommonErrorCode.IP_ALREADY_USED);
         }
 
-        // IP 중복 체크
-        if (attendanceRepository.existsByScheduleAndIpAddress(schedule, clientIp)) {
-            throw new GeneralException(CommonErrorCode.IP_ALREADY_USED);
+        // 위치 검증 (예배인 경우에만 교회 위치 기반 GPS 검증 수행)
+        if (schedule.getType() == ScheduleType.WORSHIP) {
+            validateLocation(dto.getLatitude(), dto.getLongitude());
         }
-
-        // 위치 검증
-        validateLocation(dto.getLatitude(), dto.getLongitude());
 
         // 멤버 식별
         Member member;
@@ -324,8 +322,13 @@ public class AttendanceService {
     }
 
     @Transactional
-    public void checkInByLeader(Schedule schedule, Member member) {
-        Optional<ScheduleAttendance> existing = attendanceRepository.findByScheduleAndMember(schedule, member);
+    public void checkInByLeader(Schedule schedule, Member member, LocalDate targetDate) {
+        if (targetDate == null) {
+            targetDate = LocalDate.now();
+        }
+
+        Optional<ScheduleAttendance> existing = attendanceRepository.findByScheduleAndMemberAndScheduleDate(schedule,
+                member, targetDate);
 
         if (existing.isPresent()) {
             ScheduleAttendance att = existing.get();
@@ -333,17 +336,44 @@ public class AttendanceService {
             if (att.getSource() == AttendanceSource.GPS) {
                 att.updateSource(AttendanceSource.GPS_AND_LEADER);
             }
+            // 이미 출석 상태라면 상태 업데이트 (필요 시)
+            if (att.getStatus() != AttendanceStatus.PRESENT) {
+                att.updateStatus(AttendanceStatus.PRESENT, AttendanceType.ADMIN_CHECK, AttendanceSource.LEADER);
+            }
         } else {
             // 기록 없으면 새로 생성 (리더가 보증)
             ScheduleAttendance newAtt = ScheduleAttendance.builder()
                     .schedule(schedule)
                     .member(member)
+                    .scheduleDate(targetDate)
                     .attendanceTime(LocalDateTime.now())
                     .type(AttendanceType.ADMIN_CHECK)
+                    .status(AttendanceStatus.PRESENT)
                     .source(AttendanceSource.LEADER) // ★ 소스: 리더
                     .build();
             attendanceRepository.save(newAtt);
         }
+    }
+
+    @Transactional
+    public void revertCheckInByLeader(Schedule schedule, Member member, LocalDate targetDate) {
+        if (targetDate == null)
+            return;
+
+        attendanceRepository.findByScheduleAndMemberAndScheduleDate(schedule, member, targetDate)
+                .ifPresent(att -> {
+                    // 리더가 체크했거나 교차 검증된 경우만 취소 처리
+                    if (att.getSource() == AttendanceSource.LEADER
+                            || att.getSource() == AttendanceSource.GPS_AND_LEADER) {
+                        if (att.getSource() == AttendanceSource.GPS_AND_LEADER) {
+                            // GPS 기록이 있으면 소스만 GPS로 돌리고 상태는 유지 (리더 보증만 취소)
+                            att.updateSource(AttendanceSource.GPS);
+                        } else {
+                            // 리더 단독 체크였으면 다시 REGISTERED로 돌림 (미출석 상태)
+                            att.updateStatus(AttendanceStatus.REGISTERED, null, null);
+                        }
+                    }
+                });
     }
 
     // [Modified] 3. 출석부 조회 (명단 기준)

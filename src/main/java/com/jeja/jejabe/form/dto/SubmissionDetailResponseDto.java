@@ -6,20 +6,41 @@ import com.jeja.jejabe.form.domain.QuestionType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Data
+@NoArgsConstructor
 public class SubmissionDetailResponseDto {
     private Long submissionId;
+    private Long templateId;
     private String formTitle;
     private String submitDate;
+    private LocalDateTime submitTime;
+    private String targetSundayDate;
+    private String status;
+    private String submitterName;
+    private String targetCellName;
+    private Long targetCellId;
     private List<QuestionAnswerDto> items;
 
     public SubmissionDetailResponseDto(FormSubmission submission) {
+        this(submission, null);
+    }
+
+    public SubmissionDetailResponseDto(FormSubmission submission, String cellName) {
         this.submissionId = submission.getId();
+        this.templateId = submission.getTemplate().getId();
         this.formTitle = submission.getTemplate().getTitle();
         this.submitDate = submission.getSubmitDate().toString();
+        this.submitTime = submission.getCreatedAt();
+        this.targetSundayDate = submission.getTargetSundayDate() != null ? submission.getTargetSundayDate().toString()
+                : null;
+        this.status = submission.getStatus().toString();
+        this.submitterName = submission.getSubmitter() != null ? submission.getSubmitter().getName() : "익명";
+        this.targetCellName = cellName;
+        this.targetCellId = submission.getTargetCellId();
 
         // 답변 리스트를 순회하며 DTO 생성
         this.items = submission.getAnswers().stream()
@@ -43,8 +64,7 @@ public class SubmissionDetailResponseDto {
 
             this.answers = List.of(new AnswerDetail(
                     answer.getTargetMember() != null ? answer.getTargetMember().getName() : null,
-                    answer.getValue()
-            ));
+                    answer.getValue()));
         }
     }
 

@@ -35,12 +35,10 @@ public class ClubDetailResponseDto {
     public static class ClubMemberDto {
         private Long memberId;
         private String name;
-        private String phone;
 
         public ClubMemberDto(ClubMember cm) {
             this.memberId = cm.getMember().getId();
             this.name = cm.getMember().getName();
-            this.phone = cm.getMember().getPhone();
         }
     }
 }

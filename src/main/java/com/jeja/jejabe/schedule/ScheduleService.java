@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -146,6 +147,20 @@ public class ScheduleService {
                     );
                 })
                 .collect(Collectors.toList());
+
+        // 반복 일정인 경우 특정 날짜의 발생 정보를 찾아서 반환
+        if (targetDate != null && schedule.getRecurrenceRule() != RecurrenceRule.NONE) {
+            LocalDateTime rangeStart = targetDate.atStartOfDay();
+            LocalDateTime rangeEnd = targetDate.atTime(LocalTime.MAX);
+            List<ScheduleResponseDto> occurrences = RecurrenceCalculator.generateSchedules(schedule, rangeStart,
+                    rangeEnd);
+
+            if (!occurrences.isEmpty()) {
+                ScheduleResponseDto occurrence = occurrences.get(0);
+                return new ScheduleDetailResponseDto(schedule, occurrence.getStartDate(), occurrence.getEndDate(),
+                        linkedAlbumId, attendees);
+            }
+        }
 
         return new ScheduleDetailResponseDto(schedule, linkedAlbumId, attendees);
     }

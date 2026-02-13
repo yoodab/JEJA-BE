@@ -25,6 +25,12 @@ public class CellController {
         return ResponseEntity.ok(ApiResponseForm.success(myCellInfo, "자신이 속한 셀 정보 조회 성공"));
     }
 
+    @GetMapping("/cells/{cellId}")
+    public ResponseEntity<ApiResponseForm<CellDetailResponseDto>> getCellDetail(
+            @PathVariable Long cellId) {
+        return ResponseEntity.ok(ApiResponseForm.success(cellService.getCellDetail(cellId)));
+    }
+
     // --- 관리자용 API ---
     @GetMapping("/admin/cells")
     public ResponseEntity<ApiResponseForm<List<CellDetailResponseDto>>> getAllCellsByYear(@RequestParam Integer year) {

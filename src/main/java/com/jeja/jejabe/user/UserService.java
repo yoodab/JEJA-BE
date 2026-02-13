@@ -176,11 +176,8 @@ public class UserService {
                 newPhone = formattedPhone;
             }
 
-            // member.updateContactInfo(newPhone, requestDto.getMemberImageUrl());
+            member.updatePhone(newPhone);
             user.updatePhone(newPhone);
-            if (requestDto.getMemberImageUrl() != null) {
-                member.updateContactInfo(member.getPhone(), requestDto.getMemberImageUrl());
-            }
         }
 
         // 2. User 정보 수정 (이메일)

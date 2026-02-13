@@ -64,13 +64,14 @@ public class HomepageService {
             slide.setUrl(dto.getUrl());
             slide.setLinkUrl(dto.getLinkUrl());
             slide.setTitle(dto.getTitle());
-            slide.setSubtitle(dto.getSubtitle());
+            slide.setBackgroundColor(dto.getBackgroundColor());
             // 이미지 타입으로 변경 시 텍스트 요소 제거
             slide.getTextElements().clear();
         } else {
             // 텍스트 슬라이드 설정
             slide.setBackgroundColor(dto.getBackgroundColor());
-
+            slide.setLinkUrl(dto.getLinkUrl());
+            slide.setTitle(dto.getTitle());
             // 기존 텍스트 요소 싹 지우고 새로 등록 (orphanRemoval 동작)
             slide.getTextElements().clear();
             if (dto.getTextElements() != null) {

@@ -7,10 +7,13 @@ import lombok.Getter;
 public class MemberSimpleDto {
     private final Long memberId;
     private final String name;
-    // ... 셀 정보 등 필요한 최소 정보 ...
+    private final String phone;
+    private final java.time.LocalDate birthDate;
 
     public MemberSimpleDto(Member member) {
         this.memberId = member.getId();
         this.name = member.getName();
+        this.phone = member.getPhone();
+        this.birthDate = member.getBirthDate();
     }
 }

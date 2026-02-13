@@ -42,14 +42,6 @@ public class PhotoGuard {
 
     // 운영진 권한 체크 헬퍼
     private boolean hasAdminPrivilege(UserDetailsImpl userDetails) {
-        // 시스템 관리자
-        if (userDetails.getUser().getUserRole() == UserRole.ROLE_ADMIN) return true;
-        if (userDetails.getUser().getUserRole() == UserRole.ROLE_PASTOR) return true;
-
-        Member member = userDetails.getUser().getMember();
-        if (member == null) return false;
-
-        Set<MemberRole> roles = member.getRoles();
-        return roles.contains(MemberRole.EXECUTIVE);
+        return userDetails != null && userDetails.getUser().isPrivileged();
     }
 }

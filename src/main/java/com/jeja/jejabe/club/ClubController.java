@@ -3,6 +3,8 @@ package com.jeja.jejabe.club;
 import com.jeja.jejabe.auth.UserDetailsImpl;
 import com.jeja.jejabe.club.dto.ClubCreateRequestDto;
 import com.jeja.jejabe.club.dto.ClubDetailResponseDto;
+import com.jeja.jejabe.club.dto.ClubLeaderChangeRequestDto;
+import com.jeja.jejabe.club.dto.ClubMemberAddRequestDto;
 import com.jeja.jejabe.club.dto.ClubResponseDto;
 import com.jeja.jejabe.club.dto.ClubUpdateRequestDto;
 import com.jeja.jejabe.form.FormService;
@@ -31,8 +33,7 @@ public class ClubController {
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
         // 권한 체크 로직 (팀장 or 관리자) 필요 -> Service에서 수행
         return ResponseEntity.ok(ApiResponseForm.success(
-                formService.getClubApplications(clubId, userDetails.getUser())
-        ));
+                formService.getClubApplications(clubId, userDetails.getUser())));
     }
 
     @GetMapping("/clubs")
@@ -68,9 +69,9 @@ public class ClubController {
     @PatchMapping("/clubs/{clubId}/leader")
     public ResponseEntity<ApiResponseForm<Void>> changeLeader(
             @PathVariable Long clubId,
-            @RequestBody Long newLeaderId, // 단순 ID 값 (JSON Body: 123)
+            @RequestBody ClubLeaderChangeRequestDto requestDto,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        clubService.changeLeader(clubId, newLeaderId, userDetails.getUser());
+        clubService.changeLeader(clubId, requestDto.getNewLeaderId(), userDetails.getUser());
         return ResponseEntity.ok(ApiResponseForm.success("팀장 변경 완료"));
     }
 
@@ -93,10 +94,10 @@ public class ClubController {
     @PostMapping("/clubs/{clubId}/members")
     public ResponseEntity<ApiResponseForm<Void>> addMember(
             @PathVariable Long clubId,
-            @RequestBody Long memberId, // Body에 memberId (Long) 하나만 보냄
+            @RequestBody ClubMemberAddRequestDto requestDto,
             @AuthenticationPrincipal UserDetailsImpl userDetails) {
 
-        clubService.addMember(clubId, memberId, userDetails.getUser());
+        clubService.addMember(clubId, requestDto.getMemberId(), userDetails.getUser());
         return ResponseEntity.ok(ApiResponseForm.success(null));
     }
 
