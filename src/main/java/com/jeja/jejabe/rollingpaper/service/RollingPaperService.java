@@ -11,6 +11,8 @@ import com.jeja.jejabe.rollingpaper.repository.RollingPaperMessageRepository;
 import com.jeja.jejabe.rollingpaper.repository.RollingPaperRepository;
 import com.jeja.jejabe.rollingpaper.repository.RollingPaperStickerRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,10 +33,13 @@ public class RollingPaperService {
     }
 
     @Transactional(readOnly = true)
-    public List<RollingPaperResponseDto> getAllRollingPapers() {
-        return rollingPaperRepository.findAll().stream()
-                .map(RollingPaperResponseDto::new)
-                .collect(Collectors.toList());
+    public Page<RollingPaperResponseDto> getAllRollingPapers(String title, Pageable pageable) {
+        if (title != null && !title.isEmpty()) {
+            return rollingPaperRepository.findByTitleContaining(title, pageable)
+                    .map(RollingPaperResponseDto::new);
+        }
+        return rollingPaperRepository.findAll(pageable)
+                .map(RollingPaperResponseDto::new);
     }
 
     @Transactional(readOnly = true)
