@@ -37,19 +37,24 @@ public class MemberCellHistory extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean isLeader;
 
+    @Column(nullable = false)
+    private boolean isSubLeader;
+
     @Builder
-    public MemberCellHistory(Member member, Cell cell, boolean isLeader) {
+    public MemberCellHistory(Member member, Cell cell, boolean isLeader, boolean isSubLeader) {
         this.member = member;
         this.cell = cell;
         this.startDate = LocalDate.now();
         this.isActive = false;
         this.isLeader = isLeader;
+        this.isSubLeader = isSubLeader;
     }
 
     // 순 이동/리더 변경 (수정)
-    public void changeAssignment(Cell newCell, boolean isLeader) {
+    public void changeAssignment(Cell newCell, boolean isLeader, boolean isSubLeader) {
         this.cell = newCell;
         this.isLeader = isLeader;
+        this.isSubLeader = isSubLeader;
     }
 
     // 상태 변경 (활성화/비활성화)

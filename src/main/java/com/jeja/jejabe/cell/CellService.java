@@ -41,6 +41,7 @@ public class CellService {
                     .cell(savedCell)
                     .member(leader)
                     .isLeader(true)
+                    .isSubLeader(false)
                     .build();
 
             // [Active Status Check]
@@ -57,6 +58,32 @@ public class CellService {
             // [Role Update] 리더 권한 추가
             leader.addRole(MemberRole.CELL_LEADER);
             memberRepository.save(leader);
+        }
+
+        // 부리더 배정
+        if (requestDto.getSubLeaderMemberId() != null) {
+            Member subLeader = memberRepository.findById(requestDto.getSubLeaderMemberId())
+                    .orElseThrow(() -> new GeneralException(CommonErrorCode.MEMBER_NOT_FOUND));
+
+            MemberCellHistory history = MemberCellHistory.builder()
+                    .cell(savedCell)
+                    .member(subLeader)
+                    .isLeader(false)
+                    .isSubLeader(true)
+                    .build();
+
+            boolean anyActive = memberCellHistoryRepository.existsByIsActiveTrue();
+            boolean isYearActive = memberCellHistoryRepository.existsByCell_YearAndIsActiveTrue(savedCell.getYear());
+
+            if (!anyActive || isYearActive) {
+                history.updateStatus(true);
+            }
+
+            memberCellHistoryRepository.save(history);
+
+            // [Role Update] 부리더 권한 추가
+            subLeader.addRole(MemberRole.CELL_SUB_LEADER);
+            memberRepository.save(subLeader);
         }
 
         return savedCell.getCellId();
@@ -83,6 +110,13 @@ public class CellService {
 
         // 5. 조회된 정보를 DTO로 변환하여 반환한다.
         return new MyCellResponseDto(myCell, allHistoriesInMyCell);
+    }
+
+    @Transactional(readOnly = true)
+    public CellDetailResponseDto getCellDetail(Long cellId) {
+        Cell cell = cellRepository.findById(cellId)
+                .orElseThrow(() -> new GeneralException(CommonErrorCode.CELL_NOT_FOUND));
+        return new CellDetailResponseDto(cell);
     }
 
     // ★★★ 1. 특정 연도의 모든 Cell 목록 조회 ★★★
@@ -136,24 +170,32 @@ public class CellService {
             if (targetCell == null)
                 continue;
 
-            // 리더 + 순원 ID 합치기
+            // 리더 + 부리더 + 순원 ID 합치기
             Set<Long> membersInCell = new HashSet<>();
             if (info.getMemberIds() != null)
                 membersInCell.addAll(info.getMemberIds());
             if (info.getLeaderId() != null)
                 membersInCell.add(info.getLeaderId());
+            if (info.getSubLeaderId() != null)
+                membersInCell.add(info.getSubLeaderId());
 
             // 멤버들 처리
             List<Member> members = memberRepository.findAllById(membersInCell);
             for (Member member : members) {
                 boolean isLeader = member.getId().equals(info.getLeaderId());
+                boolean isSubLeader = member.getId().equals(info.getSubLeaderId());
                 processedMemberIds.add(member.getId()); // 처리됨 표시
 
-                // [Role Update] 순장 권한 동기화 (1인 1순 원칙 가정)
+                // [Role Update] 권한 동기화 (1인 1순 원칙 가정)
                 if (isLeader) {
                     member.addRole(MemberRole.CELL_LEADER);
+                    member.removeRole(MemberRole.CELL_SUB_LEADER);
+                } else if (isSubLeader) {
+                    member.addRole(MemberRole.CELL_SUB_LEADER);
+                    member.removeRole(MemberRole.CELL_LEADER);
                 } else {
                     member.removeRole(MemberRole.CELL_LEADER);
+                    member.removeRole(MemberRole.CELL_SUB_LEADER);
                 }
 
                 // 이미 활동 중인 기록이 있는지 전수 조사 (다른 순에서 이동해온 경우 포함)
@@ -162,13 +204,14 @@ public class CellService {
 
                 if (activeHistoryOpt.isPresent()) {
                     // [이동/수정]: 기존 기록을 이 셀로 업데이트
-                    activeHistoryOpt.get().changeAssignment(targetCell, isLeader);
+                    activeHistoryOpt.get().changeAssignment(targetCell, isLeader, isSubLeader);
                 } else {
                     // [신규]: 기록 없으면 생성
                     MemberCellHistory newHistory = MemberCellHistory.builder()
                             .cell(targetCell)
                             .member(member)
                             .isLeader(isLeader)
+                            .isSubLeader(isSubLeader)
                             .build();
 
                     // [Active Status Check]

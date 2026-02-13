@@ -16,6 +16,7 @@ public class CellMemberBatchUpdateRequestDto {
     public static class CellUpdateInfo {
         private Long cellId;
         private Long leaderId;
+        private Long subLeaderId;
         private List<Long> memberIds;
     }
 }
