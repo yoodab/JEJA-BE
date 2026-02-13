@@ -15,6 +15,7 @@ public class NewcomerBatchRequestDto {
     private String registrationDate;
     private String name;
     private Boolean isMemberRegistered;
+    private Boolean isChurchRegistered;
     private Gender gender;
     private String birthDate;
     private String phone;

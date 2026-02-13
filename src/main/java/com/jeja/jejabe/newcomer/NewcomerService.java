@@ -90,9 +90,14 @@ public class NewcomerService {
         for (NewcomerBatchRequestDto dto : dtoList) {
             Member manager = null;
             if (dto.getMdName() != null && !dto.getMdName().isBlank()) {
-                manager = memberRepository.findByName(dto.getMdName()).orElse(null);
+                // findByName은 결과가 여러 개일 경우 NonUniqueResultException이 발생할 수 있으므로 findAllByName 사용
+                List<Member> managers = memberRepository.findAllByName(dto.getMdName().trim());
+                if (!managers.isEmpty()) {
+                    manager = managers.get(0);
+                }
             }
             boolean isMemberRegistered = Boolean.TRUE.equals(dto.getIsMemberRegistered());
+            boolean isChurchRegistered = Boolean.TRUE.equals(dto.getIsChurchRegistered());
 
             LocalDate parsedBirthDate = parseDateSafe(dto.getBirthDate());
             LocalDate parsedRegDate = parseDateSafe(dto.getRegistrationDate());
@@ -109,7 +114,7 @@ public class NewcomerService {
                     .middleStatus(dto.getMiddleStatus())
                     .recentStatus(dto.getRecentStatus())
                     .assignmentNote(dto.getAssignmentNote())
-                    .isChurchRegistered(isMemberRegistered)
+                    .isChurchRegistered(isChurchRegistered)
                     .build();
 
             if (parsedRegDate != null) {
