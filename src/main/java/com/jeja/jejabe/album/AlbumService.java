@@ -122,21 +122,6 @@ public class AlbumService {
 
 
     private boolean hasAdminPrivilege(UserDetailsImpl userDetails) {
-        if (userDetails == null) return false;
-
-        // 1. 시스템 관리자(UserRole) 체크
-        if (userDetails.getUser().getUserRole() == UserRole.ROLE_ADMIN || userDetails.getUser().getUserRole() == UserRole.ROLE_PASTOR) {
-            return true;
-        }
-
-        // 2. 교회 직분(MemberRole) 체크 - 임원 또는 교역자
-        Member member = userDetails.getUser().getMember();
-        if (member != null) {
-            Set<MemberRole> roles = member.getRoles();
-            // roles 컬렉션 안에 해당 직분이 포함되어 있는지 확인
-            return roles.contains(MemberRole.EXECUTIVE);
-        }
-
-        return false;
+        return userDetails != null && userDetails.getUser().isPrivileged();
     }
 }
