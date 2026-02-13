@@ -49,6 +49,19 @@ public class User extends BaseTimeEntity {
 
     private String phone;
 
+    public boolean isAdmin() {
+        return this.userRole == UserRole.ROLE_ADMIN;
+    }
+
+    public boolean isPrivileged() {
+        if (isAdmin()) return true;
+        if (this.userRole == UserRole.ROLE_PASTOR) return true;
+        if (this.member != null && this.member.getRoles().contains(com.jeja.jejabe.member.domain.MemberRole.EXECUTIVE)) {
+            return true;
+        }
+        return false;
+    }
+
     // 생성자나 빌더에도 email 추가 필요
     public void updatePassword(String newPassword) {
         this.password = newPassword;
