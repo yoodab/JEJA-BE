@@ -14,6 +14,7 @@ public class CommentResponseDto {
     private final Long commentId;
     private final String content;
     private final String authorName;
+    private final String authorProfileImage;
     private final LocalDateTime createdAt;
     private final int likeCount;
     private final boolean isDeleted;
@@ -30,6 +31,7 @@ public class CommentResponseDto {
         this.commentId = comment.getCommentId();
         this.content = comment.isDeleted() ? "삭제된 댓글입니다." : comment.getContent();
         this.authorName = comment.isDeleted() ? "(알수없음)" : comment.getAuthor().getName();
+        this.authorProfileImage = comment.isDeleted() ? null : comment.getAuthor().getUser().getProfileImageUrl();
         this.createdAt = comment.getCreatedAt();
         this.likeCount = comment.getLikeCount();
         this.isDeleted = comment.isDeleted();
