@@ -3,7 +3,11 @@ package com.jeja.jejabe.schedule.dto;
 import com.jeja.jejabe.schedule.domain.*;
 import lombok.Getter;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 public class ScheduleResponseDto {
@@ -15,6 +19,8 @@ public class ScheduleResponseDto {
     private final String location;
     private final SharingScope sharingScope;
     private final RecurrenceRule recurrenceRule;
+    private final LocalDate recurrenceEndDate;
+    private final Set<DayOfWeek> recurrenceDays;
 
     private final WorshipCategory worshipCategory;
     private final String worshipCategoryName;
@@ -29,6 +35,8 @@ public class ScheduleResponseDto {
         this.location = schedule.getLocation();
         this.sharingScope = schedule.getSharingScope();
         this.recurrenceRule = schedule.getRecurrenceRule();
+        this.recurrenceEndDate = schedule.getRecurrenceEndDate();
+        this.recurrenceDays = schedule.getRecurrenceDays();
         this.worshipCategory = schedule.getWorshipCategory();
         this.worshipCategoryName = schedule.getWorshipCategory() != null
                 ? schedule.getWorshipCategory().getDescription()
@@ -45,6 +53,8 @@ public class ScheduleResponseDto {
         this.location = originalSchedule.getLocation();
         this.sharingScope = originalSchedule.getSharingScope();
         this.recurrenceRule = originalSchedule.getRecurrenceRule();
+        this.recurrenceEndDate = originalSchedule.getRecurrenceEndDate();
+        this.recurrenceDays = originalSchedule.getRecurrenceDays();
         this.worshipCategory = originalSchedule.getWorshipCategory();
         this.worshipCategoryName = originalSchedule.getWorshipCategory() != null
                 ? originalSchedule.getWorshipCategory().getDescription()
