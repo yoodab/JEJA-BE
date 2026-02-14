@@ -9,8 +9,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Getter
 @NoArgsConstructor
@@ -28,6 +30,7 @@ public class ScheduleCreateRequestDto {
     // 반복 설정
     private RecurrenceRule recurrenceRule;
     private LocalDate recurrenceEndDate;
+    private Set<DayOfWeek> recurrenceDays;
 
     // 카테고리
     private WorshipCategory worshipCategory;
@@ -45,6 +48,7 @@ public class ScheduleCreateRequestDto {
                 .sharingScope(updateDto.getSharingScope())
                 .worshipCategory(updateDto.getWorshipCategory())
                 .recurrenceRule(updateDto.getRecurrenceRule())
-                .recurrenceEndDate(updateDto.getRecurrenceEndDate());
+                .recurrenceEndDate(updateDto.getRecurrenceEndDate())
+                .recurrenceDays(updateDto.getRecurrenceDays());
     }
 }

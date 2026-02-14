@@ -4,6 +4,7 @@ import com.jeja.jejabe.schedule.domain.RecurrenceRule;
 import com.jeja.jejabe.schedule.domain.Schedule;
 import com.jeja.jejabe.schedule.dto.ScheduleResponseDto;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -13,7 +14,8 @@ import java.util.List;
 
 public class RecurrenceCalculator {
 
-    public static List<ScheduleResponseDto> generateSchedules(Schedule schedule, LocalDateTime rangeStart, LocalDateTime rangeEnd) {
+    public static List<ScheduleResponseDto> generateSchedules(Schedule schedule, LocalDateTime rangeStart,
+            LocalDateTime rangeEnd) {
         List<ScheduleResponseDto> result = new ArrayList<>();
 
         // 반복 없음 (단순 날짜 체크)
@@ -25,11 +27,21 @@ public class RecurrenceCalculator {
         }
 
         // 반복 일정 계산
-        LocalDateTime currentStart = schedule.getStartDate();
-        LocalDateTime currentEnd = schedule.getEndDate();
-        long durationSeconds = ChronoUnit.SECONDS.between(currentStart, currentEnd);
-        LocalDate recurEnd = schedule.getRecurrenceEndDate();
+        LocalDateTime originalStart = schedule.getStartDate();
+        LocalDateTime originalEnd = schedule.getEndDate();
+        long durationSeconds = ChronoUnit.SECONDS.between(originalStart, originalEnd);
 
+        LocalDateTime currentStart = originalStart;
+
+        // [New] 특정 요일 반복(WEEKLY_DAYS)인 경우, 시작일이 선택된 요일에 포함되지 않으면 첫 번째 해당 요일로 조정
+        if (schedule.getRecurrenceRule() == RecurrenceRule.WEEKLY_DAYS && schedule.getRecurrenceDays() != null
+                && !schedule.getRecurrenceDays().isEmpty()) {
+            while (!schedule.getRecurrenceDays().contains(currentStart.getDayOfWeek())) {
+                currentStart = currentStart.plusDays(1);
+            }
+        }
+
+        LocalDate recurEnd = schedule.getRecurrenceEndDate();
 
         while (currentStart.isBefore(rangeEnd)) {
             // 1. 반복 종료일 체크
@@ -39,7 +51,7 @@ public class RecurrenceCalculator {
 
             // 2. 예외 날짜 체크 (THIS_ONLY로 삭제/수정된 날짜는 건너뜀)
             if (schedule.getExceptionDates().contains(currentStart.toLocalDate())) {
-                currentStart = getNextOccurrence(currentStart, schedule.getRecurrenceRule());
+                currentStart = getNextOccurrence(currentStart, schedule.getRecurrenceRule(), schedule);
                 continue;
             }
 
@@ -50,23 +62,34 @@ public class RecurrenceCalculator {
             }
 
             // 4. 다음 반복 날짜로 이동
-            currentStart = getNextOccurrence(currentStart, schedule.getRecurrenceRule());
+            currentStart = getNextOccurrence(currentStart, schedule.getRecurrenceRule(), schedule);
         }
 
         return result;
     }
 
-    private static LocalDateTime getNextOccurrence(LocalDateTime current, RecurrenceRule rule) {
+    private static LocalDateTime getNextOccurrence(LocalDateTime current, RecurrenceRule rule, Schedule schedule) {
         return switch (rule) {
             case DAILY -> current.plusDays(1);
             case WEEKLY -> current.plusWeeks(1);
+            case WEEKLY_DAYS -> {
+                if (schedule.getRecurrenceDays() == null || schedule.getRecurrenceDays().isEmpty()) {
+                    yield current.plusWeeks(1);
+                }
+                LocalDateTime next = current.plusDays(1);
+                while (!schedule.getRecurrenceDays().contains(next.getDayOfWeek())) {
+                    next = next.plusDays(1);
+                }
+                yield next;
+            }
             case MONTHLY -> current.plusMonths(1);
             case YEARLY -> current.plusYears(1);
             default -> current;
         };
     }
 
-    private static boolean isOverlapping(LocalDateTime start1, LocalDateTime end1, LocalDateTime start2, LocalDateTime end2) {
+    private static boolean isOverlapping(LocalDateTime start1, LocalDateTime end1, LocalDateTime start2,
+            LocalDateTime end2) {
         return start1.isBefore(end2) && end1.isAfter(start2);
     }
 }

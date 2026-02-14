@@ -178,6 +178,7 @@ public class ScheduleService {
                 .sharingScope(requestDto.getSharingScope())
                 .recurrenceRule(requestDto.getRecurrenceRule())
                 .recurrenceEndDate(requestDto.getRecurrenceEndDate())
+                .recurrenceDays(requestDto.getRecurrenceDays())
                 .worshipCategory(requestDto.getWorshipCategory())
                 .build();
 

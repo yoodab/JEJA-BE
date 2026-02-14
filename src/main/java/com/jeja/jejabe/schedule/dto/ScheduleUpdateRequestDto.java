@@ -7,8 +7,10 @@ import com.jeja.jejabe.schedule.domain.WorshipCategory;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Getter
 @NoArgsConstructor
@@ -22,6 +24,7 @@ public class ScheduleUpdateRequestDto {
     private SharingScope sharingScope;
     private RecurrenceRule recurrenceRule;
     private LocalDate recurrenceEndDate;
+    private Set<DayOfWeek> recurrenceDays;
     private WorshipCategory worshipCategory;
 
     // 어떤 방식으로 수정할지 결정 (ALL, FUTURE, THIS_ONLY)

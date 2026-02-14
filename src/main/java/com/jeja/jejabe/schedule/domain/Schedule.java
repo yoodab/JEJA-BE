@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -53,6 +54,12 @@ public class Schedule extends BaseTimeEntity {
     private LocalDate recurrenceEndDate;
 
     @ElementCollection
+    @CollectionTable(name = "schedule_recurrence_days", joinColumns = @JoinColumn(name = "schedule_id"))
+    @Column(name = "day_of_week")
+    @Enumerated(EnumType.STRING)
+    private Set<DayOfWeek> recurrenceDays = new HashSet<>();
+
+    @ElementCollection
     @CollectionTable(name = "schedule_exceptions", joinColumns = @JoinColumn(name = "schedule_id"))
     @Column(name = "exception_date")
     private Set<LocalDate> exceptionDates = new HashSet<>();
@@ -65,9 +72,10 @@ public class Schedule extends BaseTimeEntity {
 
     @Builder
     public Schedule(String title, String content, LocalDateTime startDate, LocalDateTime endDate,
-                    ScheduleType type, String location, SharingScope sharingScope,
-                    RecurrenceRule recurrenceRule, LocalDate recurrenceEndDate,
-                    WorshipCategory worshipCategory) {
+            ScheduleType type, String location, SharingScope sharingScope,
+            RecurrenceRule recurrenceRule, LocalDate recurrenceEndDate,
+            Set<DayOfWeek> recurrenceDays,
+            WorshipCategory worshipCategory) {
         this.title = title;
         this.content = content;
         this.startDate = startDate;
@@ -77,6 +85,7 @@ public class Schedule extends BaseTimeEntity {
         this.sharingScope = sharingScope;
         this.recurrenceRule = recurrenceRule == null ? RecurrenceRule.NONE : recurrenceRule;
         this.recurrenceEndDate = recurrenceEndDate;
+        this.recurrenceDays = recurrenceDays != null ? recurrenceDays : new HashSet<>();
         this.worshipCategory = worshipCategory;
     }
 
@@ -90,6 +99,7 @@ public class Schedule extends BaseTimeEntity {
         this.sharingScope = dto.getSharingScope();
         this.recurrenceRule = dto.getRecurrenceRule() == null ? RecurrenceRule.NONE : dto.getRecurrenceRule();
         this.recurrenceEndDate = dto.getRecurrenceEndDate();
+        this.recurrenceDays = dto.getRecurrenceDays() != null ? dto.getRecurrenceDays() : new HashSet<>();
         this.worshipCategory = dto.getWorshipCategory();
     }
 
