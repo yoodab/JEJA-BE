@@ -224,15 +224,22 @@ public class AttendanceService {
         List<Schedule> candidates = scheduleRepository.findCandidatesForMonth(startOfDay, endOfDay);
 
         // 2. 반복 규칙 적용하여 오늘 날짜의 일정 인스턴스 생성 및 시간 필터링
-        return candidates.stream()
-                .flatMap(s -> RecurrenceCalculator.generateSchedules(s, startOfDay, endOfDay).stream())
+        List<ScheduleResponseDto> result = candidates.stream()
+                .flatMap(s -> {
+                    List<ScheduleResponseDto> generated = RecurrenceCalculator.generateSchedules(s, startOfDay,
+                            endOfDay);
+                    return generated.stream();
+                })
                 .filter(scheduleDto -> {
                     LocalDateTime scheduleStart = scheduleDto.getStartDate();
-                    LocalDateTime windowStart = scheduleStart.minusMinutes(20);
-                    LocalDateTime windowEnd = scheduleStart.plusMinutes(20);
-                    return now.isAfter(windowStart) && now.isBefore(windowEnd);
+                    // 출석 가능 시간: 스케줄 시작 전후 20분
+                    boolean isWithinAttendanceWindow = now.isAfter(scheduleStart.minusMinutes(20))
+                            && now.isBefore(scheduleStart.plusMinutes(20));
+                    return isWithinAttendanceWindow;
                 })
                 .collect(Collectors.toList());
+
+        return result;
     }
 
     // [Modified] 2. 사용자 직접 출석 (기존 로직 수정)
@@ -252,11 +259,12 @@ public class AttendanceService {
         // 오늘의 해당 스케줄 인스턴스 찾기
         ScheduleResponseDto targetInstance = RecurrenceCalculator.generateSchedules(schedule, startOfDay, endOfDay)
                 .stream()
-                .filter(s -> {
-                    LocalDateTime sTime = s.getStartDate();
-                    LocalDateTime wStart = sTime.minusMinutes(20);
-                    LocalDateTime wEnd = sTime.plusMinutes(20);
-                    return now.isAfter(wStart) && now.isBefore(wEnd);
+                .filter(scheduleInstance -> {
+                    LocalDateTime instanceStart = scheduleInstance.getStartDate();
+                    // 출석 가능 시간: 스케줄 시작 전후 20분
+                    boolean isWithinAttendanceWindow = now.isAfter(instanceStart.minusMinutes(20))
+                            && now.isBefore(instanceStart.plusMinutes(20));
+                    return isWithinAttendanceWindow;
                 })
                 .findFirst()
                 .orElseThrow(() -> new GeneralException(CommonErrorCode.ATTENDANCE_TIME_WINDOW_EXPIRED));
@@ -277,14 +285,21 @@ public class AttendanceService {
 
         // 멤버 식별
         Member member;
-        if (userDetails != null && userDetails.getUser().getMember() != null) {
-            member = userDetails.getUser().getMember();
-        } else {
-            if (dto.getName() == null || dto.getBirthDate() == null) {
-                throw new GeneralException(CommonErrorCode.BAD_REQUEST);
-            }
+
+        // 로그인 여부와 관계없이, 명시적으로 입력된 이름/생년월일이 있으면 해당 정보를 최우선으로 사용합니다.
+        // (로그인한 사용자가 게스트를 대신 체크인해주는 경우 지원)
+        if (dto.getName() != null && !dto.getName().trim().isEmpty() &&
+                dto.getBirthDate() != null) {
+
             member = memberRepository.findByNameAndBirthDate(dto.getName(), dto.getBirthDate())
                     .orElseThrow(() -> new GeneralException(CommonErrorCode.MEMBER_NOT_FOUND_FOR_CHECK_IN));
+
+        } else if (userDetails != null && userDetails.getUser().getMember() != null) {
+            // 입력 정보가 없고 로그인된 경우 -> 본인 출석
+            member = userDetails.getUser().getMember();
+        } else {
+            // 둘 다 없는 경우
+            throw new GeneralException(CommonErrorCode.BAD_REQUEST);
         }
 
         Optional<ScheduleAttendance> existingRecord = attendanceRepository

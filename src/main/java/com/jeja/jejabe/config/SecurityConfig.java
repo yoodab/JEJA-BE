@@ -108,7 +108,11 @@ public class SecurityConfig {
                                                 // 5. ★ 홈페이지 공개 데이터 (슬라이드, 유튜브 설정 등)
                                                 .requestMatchers("/api/homepage/**").permitAll()
 
-                                                // 6. ★ 게시판/게시글 조회 (GET 요청만 허용 -> 공개 게시판은 비로그인도 볼 수 있게)
+                                                // 6. ★ 양식(Form) 조회 및 제출 (게스트 허용)
+                                                .requestMatchers(HttpMethod.GET, "/api/forms/templates/**").permitAll()
+                                                .requestMatchers(HttpMethod.POST, "/api/forms/submissions").permitAll()
+
+                                                // 7. ★ 게시판/게시글 조회 (GET 요청만 허용 -> 공개 게시판은 비로그인도 볼 수 있게)
                                                 .requestMatchers(HttpMethod.GET, "/api/boards/**", "/api/posts/**",
                                                                 "/api/comments/**")
                                                 .permitAll()

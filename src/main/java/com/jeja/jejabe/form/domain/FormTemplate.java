@@ -73,7 +73,7 @@ public class FormTemplate extends BaseTimeEntity {
     }
 
     // 전체 질문 목록을 가져오는 편의 메서드 (스냅샷용)
-    public List<FormQuestion> getAllQuestions() {
+    public List<FormQuestion> getQuestions() {
         List<FormQuestion> all = new ArrayList<>();
         for (FormSection section : sections) {
             all.addAll(section.getQuestions());

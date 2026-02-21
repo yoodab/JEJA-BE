@@ -51,6 +51,22 @@ public class FormQuestion extends BaseTimeEntity {
         this.isActive = false;
     }
 
+    public void update(String label, QuestionType inputType, String optionsJson, boolean required,
+                       int orderIndex, boolean isMemberSpecific, WorshipCategory linkedWorshipCategory,
+                       Long linkedScheduleId, LocalDate linkedScheduleDate, AttendanceSyncType syncType) {
+        this.label = label;
+        this.inputType = inputType;
+        this.optionsJson = optionsJson;
+        this.required = required;
+        this.orderIndex = orderIndex;
+        this.isMemberSpecific = isMemberSpecific;
+        this.linkedWorshipCategory = linkedWorshipCategory;
+        this.linkedScheduleId = linkedScheduleId;
+        this.linkedScheduleDate = linkedScheduleDate;
+        this.syncType = syncType != null ? syncType : AttendanceSyncType.NONE;
+        this.isActive = true;
+    }
+
     public boolean isContentChanged(String label, QuestionType inputType, String optionsJson, boolean required,
             boolean isMemberSpecific, WorshipCategory linkedWorshipCategory,
             Long linkedScheduleId, LocalDate linkedScheduleDate, AttendanceSyncType syncType) {
