@@ -41,6 +41,9 @@ public class FormSubmission extends BaseTimeEntity {
     private Long targetCellId;
     private Long targetClubId;
 
+    @Column(columnDefinition = "TEXT")
+    private String snapshotJson;
+
     @Enumerated(EnumType.STRING)
     private SubmissionStatus status;
 
@@ -68,6 +71,10 @@ public class FormSubmission extends BaseTimeEntity {
     public void updateTargetInfo(LocalDate targetSundayDate, Long targetCellId) {
         this.targetSundayDate = targetSundayDate;
         this.targetCellId = targetCellId;
+    }
+
+    public void setSnapshot(String snapshotJson) {
+        this.snapshotJson = snapshotJson;
     }
 
     public void approve() {

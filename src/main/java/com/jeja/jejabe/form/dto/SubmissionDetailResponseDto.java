@@ -30,6 +30,10 @@ public class SubmissionDetailResponseDto {
     }
 
     public SubmissionDetailResponseDto(FormSubmission submission, String cellName) {
+        this(submission, cellName, null);
+    }
+
+    public SubmissionDetailResponseDto(FormSubmission submission, String cellName, List<QuestionSnapshot> snapshots) {
         this.submissionId = submission.getId();
         this.templateId = submission.getTemplate().getId();
         this.formTitle = submission.getTemplate().getTitle();
@@ -42,10 +46,24 @@ public class SubmissionDetailResponseDto {
         this.targetCellName = cellName;
         this.targetCellId = submission.getTargetCellId();
 
-        // 답변 리스트를 순회하며 DTO 생성
-        this.items = submission.getAnswers().stream()
-                .map(answer -> new QuestionAnswerDto(answer))
-                .collect(Collectors.toList());
+        if (snapshots != null && !snapshots.isEmpty()) {
+            // 스냅샷이 있으면 스냅샷 기준으로 응답 구성 (제출 당시의 질문 상태 유지)
+            this.items = snapshots.stream()
+                    .map(snapshot -> {
+                        // 해당 질문에 대한 답변 찾기 (모든 답변)
+                        List<FormAnswer> answers = submission.getAnswers().stream()
+                                .filter(a -> a.getQuestion().getId().equals(snapshot.getQuestionId()))
+                                .collect(Collectors.toList());
+
+                        return new QuestionAnswerDto(snapshot, answers);
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            // 스냅샷이 없으면 기존 방식대로 답변 리스트 기준 구성
+            this.items = submission.getAnswers().stream()
+                    .map(answer -> new QuestionAnswerDto(answer))
+                    .collect(Collectors.toList());
+        }
     }
 
     @Data
@@ -65,6 +83,23 @@ public class SubmissionDetailResponseDto {
             this.answers = List.of(new AnswerDetail(
                     answer.getTargetMember() != null ? answer.getTargetMember().getName() : null,
                     answer.getValue()));
+        }
+
+        // 스냅샷 기반 생성자
+        public QuestionAnswerDto(QuestionSnapshot snapshot, List<FormAnswer> answers) {
+            this.questionId = snapshot.getQuestionId();
+            this.label = snapshot.getLabel();
+            this.inputType = snapshot.getInputType();
+
+            if (answers != null && !answers.isEmpty()) {
+                this.answers = answers.stream()
+                        .map(answer -> new AnswerDetail(
+                                answer.getTargetMember() != null ? answer.getTargetMember().getName() : null,
+                                answer.getValue()))
+                        .collect(Collectors.toList());
+            } else {
+                this.answers = List.of();
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 package com.jeja.jejabe.form;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jeja.jejabe.attendance.AttendanceService;
 import com.jeja.jejabe.attendance.dto.AttendanceRegistrationDto;
@@ -106,6 +107,18 @@ public class FormService {
                         .build());
             }
         }
+
+        // [Fix] Access List 처리 추가
+        if (dto.getAccessList() != null) {
+            for (TemplateCreateRequestDto.AccessDto acc : dto.getAccessList()) {
+                template.addAccess(FormAccess.builder()
+                        .accessType(acc.getAccessType())
+                        .targetType(acc.getTargetType())
+                        .targetValue(acc.getTargetValue())
+                        .build());
+            }
+        }
+
         return templateRepository.save(template).getId();
     }
 
@@ -138,6 +151,18 @@ public class FormService {
                 .guestName(dto.getGuestName())
                 .guestPhone(dto.getGuestPhone())
                 .build();
+
+        // [Snapshot] 현재 템플릿의 질문 상태를 스냅샷으로 저장
+        try {
+            List<QuestionSnapshot> snapshots = template.getQuestions().stream()
+                    .map(QuestionSnapshot::new)
+                    .collect(Collectors.toList());
+            String snapshotJson = objectMapper.writeValueAsString(snapshots);
+            submission.setSnapshot(snapshotJson);
+        } catch (Exception e) {
+            // Snapshot 저장 실패하더라도 제출은 진행 (로그만 남김)
+            e.printStackTrace();
+        }
 
         // 답변 저장
         for (SubmissionRequestDto.AnswerDto ans : dto.getAnswers()) {
@@ -724,34 +749,19 @@ public class FormService {
 
                 if (question != null) {
                     // 기존 질문 수정
-                    // 내용 변경 여부 확인
-                    boolean isChanged = question.isContentChanged(
-                            qDto.getLabel(), qDto.getInputType(), optionsJson, qDto.isRequired(),
-                            qDto.isMemberSpecific(), qDto.getLinkedWorshipCategory(),
-                            qDto.getLinkedScheduleId(), qDto.getLinkedScheduleDate(), qDto.getSyncType());
-
-                    if (isChanged) {
-                        // 내용 변경 시: 기존 질문 비활성화 + 신규 질문 생성
-                        question.disable();
-
-                        FormQuestion newQuestion = FormQuestion.builder()
-                                .label(qDto.getLabel())
-                                .inputType(qDto.getInputType())
-                                .syncType(qDto.getSyncType())
-                                .optionsJson(optionsJson)
-                                .required(qDto.isRequired())
-                                .orderIndex(j)
-                                .isMemberSpecific(qDto.isMemberSpecific())
-                                .linkedWorshipCategory(qDto.getLinkedWorshipCategory())
-                                .linkedScheduleId(qDto.getLinkedScheduleId())
-                                .linkedScheduleDate(qDto.getLinkedScheduleDate())
-                                .build();
-                        section.addQuestion(newQuestion);
-                    } else {
-                        // 내용 변경 없음: 순서만 업데이트 및 활성화
-                        question.setOrderIndex(j);
-                        question.setActive(true);
-                    }
+                    // 내용 변경 시 ID를 새로 생성하던 방식을 변경하여, 기존 질문 객체를 업데이트하도록 수정
+                    // 이를 통해 질문 수정 시 ID가 변경되어 과거 응답과의 연결이 끊어지는 문제 해결
+                    question.update(
+                            qDto.getLabel(),
+                            qDto.getInputType(),
+                            optionsJson,
+                            qDto.isRequired(),
+                            j, // orderIndex
+                            qDto.isMemberSpecific(),
+                            qDto.getLinkedWorshipCategory(),
+                            qDto.getLinkedScheduleId(),
+                            qDto.getLinkedScheduleDate(),
+                            qDto.getSyncType());
                 } else {
                     // 신규 질문 생성
                     section.addQuestion(FormQuestion.builder()
@@ -835,7 +845,19 @@ public class FormService {
                     .map(Cell::getCellName)
                     .orElse(null);
         }
-        return new SubmissionDetailResponseDto(submission, cellName);
+
+        List<QuestionSnapshot> snapshots = null;
+        if (submission.getSnapshotJson() != null && !submission.getSnapshotJson().isEmpty()) {
+            try {
+                snapshots = objectMapper.readValue(submission.getSnapshotJson(),
+                        new TypeReference<List<QuestionSnapshot>>() {
+                        });
+            } catch (Exception e) {
+                // 스냅샷 파싱 실패 시 무시하고 기본 동작 수행
+            }
+        }
+
+        return new SubmissionDetailResponseDto(submission, cellName, snapshots);
     }
 
     public void updateTemplateStatus(Long templateId, Boolean isActive, User user) {
