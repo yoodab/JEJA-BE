@@ -99,6 +99,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/newcomers/public").permitAll() // 새가족 온라인 등록
                                                 // 대시보드 일정 조회
                                                 .requestMatchers("/api/schedules/upcoming").permitAll()
+                                                .requestMatchers("/api/albums").permitAll()
 
                                                 // 4. ★ 정적 리소스 및 파일 업로드 경로 (이미지 보기용)
                                                 .requestMatchers("/files/**").permitAll()
