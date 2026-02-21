@@ -49,6 +49,7 @@ public class Schedule extends BaseTimeEntity {
     private SharingScope sharingScope;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private RecurrenceRule recurrenceRule;
 
     private LocalDate recurrenceEndDate;
